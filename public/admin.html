@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<title>Platforms</title>
+	<style>
+		body {
+			font: 14px sans-serif;
+			max-width: 900px;
+			margin: 40px auto
+		}
+
+		table {
+			border-collapse: collapse;
+			width: 100%
+		}
+
+		th,
+		td {
+			border: 1px solid #ccc;
+			padding: 8px;
+			text-align: left
+		}
+
+		button {
+			cursor: pointer
+		}
+	</style>
+</head>
+
+<body>
+	<h1>Platforms</h1>
+	<form id="create"><input name="name" placeholder="New platform name" required><button>Add platform</button></form>
+	<p id="status"></p>
+	<table>
+		<thead>
+			<tr>
+				<th>ID</th>
+				<th>Name</th>
+				<th>Token</th>
+				<th></th>
+			</tr>
+		</thead>
+		<tbody id="platforms"></tbody>
+	</table>
+	<script>
+		const body = document.querySelector('#platforms'), status = document.querySelector('#status'), form = document.querySelector('#create');
+		async function load() { const r = await fetch('/admin/platforms'); if (!r.ok) return status.textContent = 'Failed to load platforms'; const platforms = await r.json(); body.replaceChildren(...platforms.map(platform => { const row = document.createElement('tr'); for (const value of [platform.id, platform.name, platform.token]) { const cell = document.createElement('td'); cell.textContent = value; row.append(cell) } const cell = document.createElement('td'), button = document.createElement('button'); button.textContent = 'Refresh token'; button.onclick = () => refresh(platform.id); cell.append(button); row.append(cell); return row })) }
+		async function refresh(id) { const r = await fetch('/admin/platforms/' + id + '/token', { method: 'PUT' }); if (!r.ok) return status.textContent = 'Failed to refresh token'; status.textContent = 'Token refreshed'; load() }
+		form.onsubmit = async event => { event.preventDefault(); const r = await fetch('/admin/platforms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: form.name.value }) }); if (!r.ok) return status.textContent = 'Failed to add platform'; form.reset(); status.textContent = 'Platform added'; load() };
+		load();
+	</script>
+</body>
+
+</html>

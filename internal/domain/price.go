@@ -10,14 +10,18 @@ const (
 )
 
 type Offer struct {
-	ID         int
-	ItemID     int
-	PlatformID int
-	Price      decimal.Decimal
-	Side       OfferSide
+	ItemID        int
+	CategoryID    int
+	ItemName      string
+	PlatformID    int
+	PlatformToken string
+	Price         decimal.Decimal
+	Count         int
+	Side          OfferSide
 }
 
 type Platform struct {
-	ID   int
-	Name string
+	ID    int
+	Name  string
+	Token string
 }

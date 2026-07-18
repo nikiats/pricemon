@@ -3,29 +3,42 @@ info:
   title: Go Price Monitor API
   version: 1.0.0
 paths:
-  /categories/{categoryID}/items:
+  /categories/{categoryID}/offers:
     get:
-      summary: Get category items
+      summary: Get best offers in a category
       parameters:
         - $ref: '#/components/parameters/CategoryID'
+        - name: afterID
+          in: query
+          description: Last item ID from the previous page
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
       responses:
         '200':
-          description: Items in the category
+          description: Items with at least one offer
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Item'
+                $ref: '#/components/schemas/OffersPage'
         '400':
           $ref: '#/components/responses/BadRequest'
         '500':
           $ref: '#/components/responses/InternalServerError'
-  /items/{itemID}/offers:
+  /offers:
     put:
       summary: Create or update an offer
-      parameters:
-        - $ref: '#/components/parameters/ItemID'
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -37,9 +50,79 @@ paths:
           description: Offer saved
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /admin/platforms:
+    get:
+      summary: List platform tokens
+      security:
+        - adminAuth: []
+      responses:
+        '200':
+          description: Platforms
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Platform'
+        '401':
+          $ref: '#/components/responses/AdminUnauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      summary: Create a platform
+      security:
+        - adminAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePlatformRequest'
+      responses:
+        '201':
+          description: Platform created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Platform'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/AdminUnauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /admin/platforms/{platformID}/token:
+    put:
+      summary: Regenerate a platform token
+      security:
+        - adminAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PlatformID'
+      responses:
+        '200':
+          description: New platform token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Token'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/AdminUnauthorized'
         '500':
           $ref: '#/components/responses/InternalServerError'
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+    adminAuth:
+      type: http
+      scheme: basic
   parameters:
     CategoryID:
       name: categoryID
@@ -48,15 +131,15 @@ components:
       schema:
         type: integer
         format: int64
-    ItemID:
-      name: itemID
+    PlatformID:
+      name: platformID
       in: path
       required: true
       schema:
         type: integer
         format: int64
   schemas:
-    Item:
+    OfferSummary:
       type: object
       required: [id, name, categoryID]
       properties:
@@ -68,10 +151,34 @@ components:
         categoryID:
           type: integer
           format: int64
+        lowestSellPrice:
+          type: [string, 'null']
+        lowestSellCount:
+          type: [integer, 'null']
+        highestBuyPrice:
+          type: [string, 'null']
+        highestBuyCount:
+          type: [integer, 'null']
+    OffersPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OfferSummary'
+        nextAfterID:
+          type: integer
+          format: int64
     SetOfferRequest:
       type: object
-      required: [platformID, side, price]
+      required: [categoryID, itemName, platformID, side, price, count]
       properties:
+        categoryID:
+          type: integer
+          format: int64
+        itemName:
+          type: string
         platformID:
           type: integer
           format: int64
@@ -81,11 +188,39 @@ components:
         price:
           type: string
           description: Decimal number, for example 123.45
+        count:
+          type: integer
+          minimum: 0
     Error:
       type: object
       required: [error]
       properties:
         error:
+          type: string
+    Platform:
+      type: object
+      required: [id, name, token]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        token:
+          type: string
+          format: uuid
+    Token:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          format: uuid
+    CreatePlatformRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
           type: string
   responses:
     BadRequest:
@@ -100,3 +235,11 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Invalid platform token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    AdminUnauthorized:
+      description: Invalid admin credentials

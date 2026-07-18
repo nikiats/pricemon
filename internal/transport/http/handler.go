@@ -1,100 +1,65 @@
 package http
 
 import (
+	"crypto/subtle"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/shopspring/decimal"
 
 	"gopricemon/internal/domain"
 )
 
 type Service interface {
-	GetItems(categoryID int) ([]domain.Item, error)
+	GetOffers(categoryID, afterID, limit int) (domain.OfferPage, error)
 	SetOffer(offer domain.Offer) error
+	GetPlatforms() ([]domain.Platform, error)
+	CreatePlatform(name string) (domain.Platform, error)
+	RegeneratePlatformToken(platformID int) (string, error)
 }
 
 type Handler struct {
-	service Service
+	service       Service
+	adminPassword string
 }
 
-type itemResponse struct {
-	ID         int    `json:"id"`
-	Name       string `json:"name"`
-	CategoryID int    `json:"categoryID"`
-}
-
-func NewHandler(service Service) *Handler {
-	return &Handler{service: service}
+func NewHandler(service Service, adminPassword string) *Handler {
+	return &Handler{service: service, adminPassword: adminPassword}
 }
 
 func (h *Handler) Register(router *gin.Engine) {
-	router.GET("/categories/:categoryID/items", h.getItems)
-	router.PUT("/items/:itemID/offers", h.setOffer)
+	router.Use(cors)
+
+	router.GET("/categories/:categoryID/offers", h.getOffers)
+	router.PUT("/offers", h.setOffer)
+
+	admin := router.Group("/admin", h.adminAuth)
+	admin.GET("", h.adminPage)
+	admin.GET("/platforms", h.getPlatforms)
+	admin.POST("/platforms", h.createPlatform)
+	admin.PUT("/platforms/:platformID/token", h.regeneratePlatformToken)
 }
 
-func (h *Handler) getItems(c *gin.Context) {
-	categoryID, err := strconv.Atoi(c.Param("categoryID"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid category ID"})
+func cors(c *gin.Context) {
+	c.Header("Access-Control-Allow-Origin", "*")
+	c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
+	c.Header("Access-Control-Allow-Headers", "Authorization, Content-Type")
+
+	if c.Request.Method == http.MethodOptions {
+		c.AbortWithStatus(http.StatusNoContent)
 		return
 	}
 
-	items, err := h.service.GetItems(categoryID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
-		return
-	}
-
-	response := make([]itemResponse, len(items))
-	for i, item := range items {
-		response[i] = itemResponse{item.ID, item.Name, item.CategoryID}
-	}
-	c.JSON(http.StatusOK, response)
+	c.Next()
 }
 
-func (h *Handler) setOffer(c *gin.Context) {
-	itemID, err := strconv.Atoi(c.Param("itemID"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid item ID"})
+func (h *Handler) adminAuth(c *gin.Context) {
+	username, password, ok := c.Request.BasicAuth()
+	valid := ok && username == "admin" && subtle.ConstantTimeCompare([]byte(password), []byte(h.adminPassword)) == 1
+	if !valid {
+		c.Header("WWW-Authenticate", `Basic realm="admin"`)
+		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
-	var request struct {
-		PlatformID int              `json:"platformID"`
-		Side       domain.OfferSide `json:"side"`
-		Price      string           `json:"price"`
-	}
-	if err = c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
-		return
-	}
-	if request.Side != domain.SideSell && request.Side != domain.SideBuy {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid offer side"})
-		return
-	}
-	if request.PlatformID < 1 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid platform ID"})
-		return
-	}
-
-	price, err := decimal.NewFromString(request.Price)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid price"})
-		return
-	}
-
-	offer := domain.Offer{
-		ItemID:     itemID,
-		PlatformID: request.PlatformID,
-		Side:       request.Side,
-		Price:      price,
-	}
-	if err = h.service.SetOffer(offer); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
-		return
-	}
-
-	c.Status(http.StatusNoContent)
+	c.Next()
 }

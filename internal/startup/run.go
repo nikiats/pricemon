@@ -18,7 +18,7 @@ func Run(config Config) error {
 	defer repository.Close()
 
 	router := gin.Default()
-	transport.NewHandler(service.NewService(repository)).Register(router)
+	transport.NewHandler(service.NewService(repository), config.AdminPassword).Register(router)
 
 	return router.Run(fmt.Sprintf(":%d", config.HTTPPort))
 }
