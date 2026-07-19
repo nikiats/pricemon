@@ -8,19 +8,21 @@ type Item struct {
 	CategoryID int
 }
 
-type OfferSummary struct {
-	ID              int
-	Name            string
-	CategoryID      int
-	LowestSellPrice *decimal.Decimal
-	LowestSellCount *int
-	HighestBuyPrice *decimal.Decimal
-	HighestBuyCount *int
+type ItemSummary struct {
+	ID                   int
+	Name                 string
+	CategoryID           int
+	BestSellPrice        *decimal.Decimal
+	BestSellCount        *int
+	BestSellPlatformName *string
+	BestBuyPrice         *decimal.Decimal
+	BestBuyCount         *int
+	BestBuyPlatformName  *string
 }
 
-type OfferPage struct {
-	Items       []OfferSummary
-	NextAfterID *int
+type SummaryPage struct {
+	Items      []ItemSummary
+	NextOffset *int
 }
 
 type Category struct {

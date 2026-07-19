@@ -17,7 +17,7 @@ type Repository interface {
 	GetPlatform(platformID int) (domain.Platform, error)
 	GetItemID(categoryID int, name string) (int, error)
 	CreateItem(categoryID int, name string) (int, error)
-	GetOffers(categoryID, afterID, limit int) ([]domain.OfferSummary, error)
+	GetSummary(categoryID, offset, limit int) ([]domain.ItemSummary, error)
 	GetPlatforms() ([]domain.Platform, error)
 	CreatePlatform(name string) (domain.Platform, error)
 	RegeneratePlatformToken(platformID int) (string, error)

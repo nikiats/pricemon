@@ -65,56 +65,55 @@ func (r *Repository) CreateItem(categoryID int, name string) (int, error) {
 	return itemID, err
 }
 
-func (r *Repository) GetOffers(categoryID, afterID, limit int) ([]domain.OfferSummary, error) {
+func (r *Repository) GetSummary(categoryID, offset, limit int) ([]domain.ItemSummary, error) {
 	const query = `
-		WITH page_items AS (
-			SELECT i.id, i.name, i.category_id
-			FROM items AS i
-			WHERE i.category_id = $1
-				AND i.id > $2
-				AND EXISTS (SELECT 1 FROM offers AS o WHERE o.item_id = i.id)
-			ORDER BY i.id
-			LIMIT $3
-		)
 		SELECT
 			i.id, i.name, i.category_id,
-			sell.price, sell.count,
-			buy.price, buy.count
-		FROM page_items AS i
+			sell.price, sell.count, sell.platform_name,
+			buy.price, buy.count, buy.platform_name
+		FROM items AS i
 		LEFT JOIN LATERAL (
-			SELECT price, count
-			FROM offers
-			WHERE item_id = i.id AND side = 'S'
-			ORDER BY price, id
+			SELECT o.price, o.count, p.name AS platform_name
+			FROM offers AS o
+			JOIN platforms AS p ON p.id = o.platform_id
+			WHERE o.item_id = i.id AND o.side = 'S'
+			ORDER BY o.price, o.id
 			LIMIT 1
 		) AS sell ON TRUE
 		LEFT JOIN LATERAL (
-			SELECT price, count
-			FROM offers
-			WHERE item_id = i.id AND side = 'B'
-			ORDER BY price DESC, id
+			SELECT o.price, o.count, p.name AS platform_name
+			FROM offers AS o
+			JOIN platforms AS p ON p.id = o.platform_id
+			WHERE o.item_id = i.id AND o.side = 'B'
+			ORDER BY o.price DESC, o.id
 			LIMIT 1
 		) AS buy ON TRUE
-		ORDER BY i.id
+		WHERE i.category_id = $1
+			AND (sell.price IS NOT NULL OR buy.price IS NOT NULL)
+		ORDER BY sell.price - buy.price DESC NULLS LAST, i.id
+		OFFSET $2
+		LIMIT $3
 	`
 
-	rows, err := r.pool.Query(context.Background(), query, categoryID, afterID, limit)
+	rows, err := r.pool.Query(context.Background(), query, categoryID, offset, limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var items []domain.OfferSummary
+	var items []domain.ItemSummary
 	for rows.Next() {
-		var item domain.OfferSummary
+		var item domain.ItemSummary
 		if err = rows.Scan(
 			&item.ID,
 			&item.Name,
 			&item.CategoryID,
-			&item.LowestSellPrice,
-			&item.LowestSellCount,
-			&item.HighestBuyPrice,
-			&item.HighestBuyCount,
+			&item.BestSellPrice,
+			&item.BestSellCount,
+			&item.BestSellPlatformName,
+			&item.BestBuyPrice,
+			&item.BestBuyCount,
+			&item.BestBuyPlatformName,
 		); err != nil {
 			return nil, err
 		}

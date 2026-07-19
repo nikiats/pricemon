@@ -16,34 +16,36 @@ import (
 const defaultPageSize = 20
 
 type itemResponse struct {
-	ID              int              `json:"id"`
-	Name            string           `json:"name"`
-	CategoryID      int              `json:"categoryID"`
-	LowestSellPrice *decimal.Decimal `json:"lowestSellPrice"`
-	LowestSellCount *int             `json:"lowestSellCount"`
-	HighestBuyPrice *decimal.Decimal `json:"highestBuyPrice"`
-	HighestBuyCount *int             `json:"highestBuyCount"`
+	ID                   int              `json:"id"`
+	Name                 string           `json:"name"`
+	CategoryID           int              `json:"categoryID"`
+	BestSellPrice        *decimal.Decimal `json:"bestSellPrice"`
+	BestSellCount        *int             `json:"bestSellCount"`
+	BestSellPlatformName *string          `json:"bestSellPlatformName"`
+	BestBuyPrice         *decimal.Decimal `json:"bestBuyPrice"`
+	BestBuyCount         *int             `json:"bestBuyCount"`
+	BestBuyPlatformName  *string          `json:"bestBuyPlatformName"`
 }
 
-type itemsResponse struct {
-	Items       []itemResponse `json:"items"`
-	NextAfterID *int           `json:"nextAfterID,omitempty"`
+type summaryResponse struct {
+	Items      []itemResponse `json:"items"`
+	NextOffset *int           `json:"nextOffset,omitempty"`
 }
 
-func (h *Handler) getOffers(c *gin.Context) {
+func (h *Handler) getSummary(c *gin.Context) {
 	categoryID, err := strconv.Atoi(c.Param("categoryID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid category ID"})
 		return
 	}
 
-	afterID, limit, err := pagination(c)
+	offset, limit, err := pagination(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid pagination"})
 		return
 	}
 
-	page, err := h.service.GetOffers(categoryID, afterID, limit)
+	page, err := h.service.GetSummary(categoryID, offset, limit)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidCategoryID) || errors.Is(err, service.ErrInvalidPagination) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -57,21 +59,23 @@ func (h *Handler) getOffers(c *gin.Context) {
 	items := make([]itemResponse, len(page.Items))
 	for i, item := range page.Items {
 		items[i] = itemResponse{
-			ID:              item.ID,
-			Name:            item.Name,
-			CategoryID:      item.CategoryID,
-			LowestSellPrice: item.LowestSellPrice,
-			LowestSellCount: item.LowestSellCount,
-			HighestBuyPrice: item.HighestBuyPrice,
-			HighestBuyCount: item.HighestBuyCount,
+			ID:                   item.ID,
+			Name:                 item.Name,
+			CategoryID:           item.CategoryID,
+			BestSellPrice:        item.BestSellPrice,
+			BestSellCount:        item.BestSellCount,
+			BestSellPlatformName: item.BestSellPlatformName,
+			BestBuyPrice:         item.BestBuyPrice,
+			BestBuyCount:         item.BestBuyCount,
+			BestBuyPlatformName:  item.BestBuyPlatformName,
 		}
 	}
 
-	c.JSON(http.StatusOK, itemsResponse{Items: items, NextAfterID: page.NextAfterID})
+	c.JSON(http.StatusOK, summaryResponse{Items: items, NextOffset: page.NextOffset})
 }
 
 func pagination(c *gin.Context) (int, int, error) {
-	afterID, err := queryInt(c, "afterID", 0)
+	offset, err := queryInt(c, "offset", 0)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -81,7 +85,7 @@ func pagination(c *gin.Context) (int, int, error) {
 		return 0, 0, err
 	}
 
-	return afterID, limit, nil
+	return offset, limit, nil
 }
 
 func queryInt(c *gin.Context, name string, defaultValue int) (int, error) {

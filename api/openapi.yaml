@@ -3,14 +3,14 @@ info:
   title: Go Price Monitor API
   version: 1.0.0
 paths:
-  /categories/{categoryID}/offers:
+  /categories/{categoryID}/summary:
     get:
-      summary: Get best offers in a category
+      summary: Get category summary
       parameters:
         - $ref: '#/components/parameters/CategoryID'
-        - name: afterID
+        - name: offset
           in: query
-          description: Last item ID from the previous page
+          description: Number of already returned items
           schema:
             type: integer
             format: int64
@@ -29,7 +29,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/OffersPage'
+                $ref: '#/components/schemas/SummaryPage'
         '400':
           $ref: '#/components/responses/BadRequest'
         '500':
@@ -139,7 +139,7 @@ components:
         type: integer
         format: int64
   schemas:
-    OfferSummary:
+    ItemSummary:
       type: object
       required: [id, name, categoryID]
       properties:
@@ -151,23 +151,27 @@ components:
         categoryID:
           type: integer
           format: int64
-        lowestSellPrice:
+        bestSellPrice:
           type: [string, 'null']
-        lowestSellCount:
+        bestSellCount:
           type: [integer, 'null']
-        highestBuyPrice:
+        bestSellPlatformName:
           type: [string, 'null']
-        highestBuyCount:
+        bestBuyPrice:
+          type: [string, 'null']
+        bestBuyCount:
           type: [integer, 'null']
-    OffersPage:
+        bestBuyPlatformName:
+          type: [string, 'null']
+    SummaryPage:
       type: object
       required: [items]
       properties:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/OfferSummary'
-        nextAfterID:
+            $ref: '#/components/schemas/ItemSummary'
+        nextOffset:
           type: integer
           format: int64
     SetOfferRequest:

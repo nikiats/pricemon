@@ -5,3 +5,7 @@ import "github.com/gin-gonic/gin"
 func (h *Handler) adminPage(c *gin.Context) {
 	c.File("public/admin.html")
 }
+
+func (h *Handler) offersPage(c *gin.Context) {
+	c.File("public/offers.html")
+}

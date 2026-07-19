@@ -10,7 +10,7 @@ import (
 )
 
 type Service interface {
-	GetOffers(categoryID, afterID, limit int) (domain.OfferPage, error)
+	GetSummary(categoryID, offset, limit int) (domain.SummaryPage, error)
 	SetOffer(offer domain.Offer) error
 	GetPlatforms() ([]domain.Platform, error)
 	CreatePlatform(name string) (domain.Platform, error)
@@ -29,7 +29,8 @@ func NewHandler(service Service, adminPassword string) *Handler {
 func (h *Handler) Register(router *gin.Engine) {
 	router.Use(cors)
 
-	router.GET("/categories/:categoryID/offers", h.getOffers)
+	router.GET("/categories/:categoryID/summary", h.getSummary)
+	router.GET("/offers", h.offersPage)
 	router.PUT("/offers", h.setOffer)
 
 	admin := router.Group("/admin", h.adminAuth)

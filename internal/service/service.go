@@ -31,27 +31,27 @@ func NewService(repository repository.Repository) *Service {
 	}
 }
 
-func (s *Service) GetOffers(categoryID, afterID, limit int) (domain.OfferPage, error) {
+func (s *Service) GetSummary(categoryID, offset, limit int) (domain.SummaryPage, error) {
 	if categoryID < 1 {
-		return domain.OfferPage{}, ErrInvalidCategoryID
+		return domain.SummaryPage{}, ErrInvalidCategoryID
 	}
-	if afterID < 0 || limit < 1 || limit > 100 {
-		return domain.OfferPage{}, ErrInvalidPagination
+	if offset < 0 || limit < 1 || limit > 100 {
+		return domain.SummaryPage{}, ErrInvalidPagination
 	}
 
-	items, err := s.repo.GetOffers(categoryID, afterID, limit+1)
+	items, err := s.repo.GetSummary(categoryID, offset, limit+1)
 	if err != nil {
-		return domain.OfferPage{}, err
+		return domain.SummaryPage{}, err
 	}
 
-	page := domain.OfferPage{Items: items}
+	page := domain.SummaryPage{Items: items}
 	if len(items) <= limit {
 		return page, nil
 	}
 
 	page.Items = items[:limit]
-	nextAfterID := page.Items[len(page.Items)-1].ID
-	page.NextAfterID = &nextAfterID
+	nextOffset := offset + limit
+	page.NextOffset = &nextOffset
 
 	return page, nil
 }
