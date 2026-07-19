@@ -1,7 +1,14 @@
 package startup
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -20,5 +27,29 @@ func Run(config Config) error {
 	router := gin.Default()
 	transport.NewHandler(service.NewService(repository), config.AdminPassword).Register(router)
 
-	return router.Run(fmt.Sprintf(":%d", config.HTTPPort))
+	server := &http.Server{
+		Addr:    fmt.Sprintf(":%d", config.HTTPPort),
+		Handler: router,
+	}
+
+	errorsCh := make(chan error, 1)
+	go func() {
+		errorsCh <- server.ListenAndServe()
+	}()
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	select {
+	case err := <-errorsCh:
+		if errors.Is(err, http.ErrServerClosed) {
+			return nil
+		}
+		return err
+	case <-ctx.Done():
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		return server.Shutdown(shutdownCtx)
+	}
 }
