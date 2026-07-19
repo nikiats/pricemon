@@ -76,7 +76,7 @@ func (r *Repository) GetSummary(categoryID, offset, limit int) ([]domain.ItemSum
 			SELECT o.price, o.count, p.name AS platform_name
 			FROM offers AS o
 			JOIN platforms AS p ON p.id = o.platform_id
-			WHERE o.item_id = i.id AND o.side = 'S'
+			WHERE o.item_id = i.id AND o.side = 'S' AND o.count >= 1
 			ORDER BY o.price, o.id
 			LIMIT 1
 		) AS sell ON TRUE
@@ -84,13 +84,13 @@ func (r *Repository) GetSummary(categoryID, offset, limit int) ([]domain.ItemSum
 			SELECT o.price, o.count, p.name AS platform_name
 			FROM offers AS o
 			JOIN platforms AS p ON p.id = o.platform_id
-			WHERE o.item_id = i.id AND o.side = 'B'
+			WHERE o.item_id = i.id AND o.side = 'B' AND o.count >= 1
 			ORDER BY o.price DESC, o.id
 			LIMIT 1
 		) AS buy ON TRUE
 		WHERE i.category_id = $1
 			AND (sell.price IS NOT NULL OR buy.price IS NOT NULL)
-		ORDER BY sell.price - buy.price DESC NULLS LAST, i.id
+		ORDER BY buy.price - sell.price DESC NULLS LAST, i.id
 		OFFSET $2
 		LIMIT $3
 	`
