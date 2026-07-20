@@ -14,6 +14,7 @@ var (
 
 type Repository interface {
 	SetOffer(offer domain.Offer) error
+	SetZeroCount(itemID, platformID int) (bool, error)
 	GetPlatform(platformID int) (domain.Platform, error)
 	GetItemID(categoryID int, name string) (int, error)
 	CreateItem(categoryID int, name string) (int, error)

@@ -25,6 +25,21 @@ func (r *Repository) SetOffer(offer domain.Offer) error {
 	return err
 }
 
+func (r *Repository) SetZeroCount(itemID, platformID int) (bool, error) {
+	const query = `
+		UPDATE offers
+		SET count = 0, updated_at = NOW()
+		WHERE item_id = $1 AND platform_id = $2
+	`
+
+	result, err := r.pool.Exec(context.Background(), query, itemID, platformID)
+	if err != nil {
+		return false, err
+	}
+
+	return result.RowsAffected() > 0, nil
+}
+
 func (r *Repository) GetPlatform(platformID int) (domain.Platform, error) {
 	const query = `SELECT id, name, token::text FROM platforms WHERE id = $1`
 

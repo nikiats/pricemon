@@ -93,6 +93,35 @@ func (s *Service) SetOffer(offer domain.Offer) error {
 	return s.repo.SetOffer(offer)
 }
 
+func (s *Service) SetZeroCount(categoryID int, itemName string, platformID int, platformToken string) (bool, error) {
+	itemName = strings.TrimSpace(itemName)
+	platformToken = strings.TrimSpace(platformToken)
+	if categoryID < 1 || itemName == "" || platformID < 1 || platformToken == "" {
+		return false, ErrInvalidOffer
+	}
+
+	platform, err := s.repo.GetPlatform(platformID)
+	if errors.Is(err, repository.ErrPlatformNotFound) {
+		return false, ErrInvalidPlatformToken
+	}
+	if err != nil {
+		return false, err
+	}
+	if subtle.ConstantTimeCompare([]byte(platformToken), []byte(platform.Token)) != 1 {
+		return false, ErrInvalidPlatformToken
+	}
+
+	itemID, err := s.repo.GetItemID(categoryID, itemName)
+	if errors.Is(err, repository.ErrItemNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+
+	return s.repo.SetZeroCount(itemID, platformID)
+}
+
 func (s *Service) GetPlatforms() ([]domain.Platform, error) {
 	return s.repo.GetPlatforms()
 }

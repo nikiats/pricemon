@@ -149,6 +149,46 @@ func (h *Handler) setOffer(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+func (h *Handler) setZeroCount(c *gin.Context) {
+	token, ok := bearerToken(c.GetHeader("Authorization"))
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization header"})
+		return
+	}
+
+	var request struct {
+		CategoryID int    `json:"categoryID"`
+		ItemName   string `json:"itemName"`
+		PlatformID int    `json:"platformID"`
+	}
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	updated, err := h.service.SetZeroCount(request.CategoryID, request.ItemName, request.PlatformID, token)
+	if err != nil {
+		if errors.Is(err, service.ErrInvalidPlatformToken) {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
+		}
+		if errors.Is(err, service.ErrInvalidOffer) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	if !updated {
+		c.JSON(http.StatusOK, gin.H{"result": "no offer modified"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"result": "offer count set to zero"})
+}
+
 func bearerToken(header string) (string, bool) {
 	scheme, token, ok := strings.Cut(header, " ")
 	return token, ok && strings.EqualFold(scheme, "Bearer") && token != ""

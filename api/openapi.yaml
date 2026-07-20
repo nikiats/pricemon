@@ -54,6 +54,31 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /offers/zero-count:
+    put:
+      summary: Set offer count to zero
+      description: Sets the count to zero for every existing offer of an item on the platform. Does not create an item or offer.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetZeroCountRequest'
+      responses:
+        '200':
+          description: Offer count updated or no offer found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetZeroCountResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /admin/platforms:
     get:
       summary: List platform tokens
@@ -195,6 +220,25 @@ components:
         count:
           type: integer
           minimum: 0
+    SetZeroCountRequest:
+      type: object
+      required: [categoryID, itemName, platformID]
+      properties:
+        categoryID:
+          type: integer
+          format: int64
+        itemName:
+          type: string
+        platformID:
+          type: integer
+          format: int64
+    SetZeroCountResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [offer not found, count set to zero]
     Error:
       type: object
       required: [error]

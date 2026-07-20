@@ -12,6 +12,7 @@ import (
 type Service interface {
 	GetSummary(categoryID, offset, limit int) (domain.SummaryPage, error)
 	SetOffer(offer domain.Offer) error
+	SetZeroCount(categoryID int, itemName string, platformID int, platformToken string) (bool, error)
 	GetPlatforms() ([]domain.Platform, error)
 	CreatePlatform(name string) (domain.Platform, error)
 	RegeneratePlatformToken(platformID int) (string, error)
@@ -32,6 +33,7 @@ func (h *Handler) Register(router *gin.Engine) {
 	router.GET("/categories/:categoryID/summary", h.getSummary)
 	router.GET("/offers", h.offersPage)
 	router.PUT("/offers", h.setOffer)
+	router.PUT("/offers/zero-count", h.setZeroCount)
 
 	admin := router.Group("/admin", h.adminAuth)
 	admin.GET("", h.adminPage)
