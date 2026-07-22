@@ -1,6 +1,10 @@
 package domain
 
-import "github.com/shopspring/decimal"
+import (
+	"time"
+
+	"github.com/shopspring/decimal"
+)
 
 type Item struct {
 	ID         int
@@ -12,14 +16,15 @@ type ItemSummary struct {
 	ID                   int
 	Name                 string
 	CategoryID           int
-	BestSellPrice        *decimal.Decimal
-	BestSellCount        *int
-	BestSellPlatformName *string
-	BestSellURL          *string
-	BestBuyPrice         *decimal.Decimal
-	BestBuyCount         *int
-	BestBuyPlatformName  *string
-	BestBuyURL           *string
+	SellPrice            *decimal.Decimal
+	SellCount            *int
+	SellPlatformName     *string
+	SellURL              *string
+	BuyPrice             *decimal.Decimal
+	BuyCount             *int
+	BuyPlatformName      *string
+	BuyURL               *string
+	OldestOfferUpdatedAt *time.Time
 }
 
 type SummaryPage struct {

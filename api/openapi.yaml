@@ -22,7 +22,7 @@ paths:
             type: integer
             minimum: 1
             maximum: 100
-            default: 20
+            default: 50
         - name: max_age
           in: query
           description: Maximum age of both offers in seconds
@@ -182,22 +182,25 @@ components:
         categoryID:
           type: integer
           format: int64
-        bestSellPrice:
+        sellPrice:
           type: [string, 'null']
-        bestSellCount:
+        sellCount:
           type: [integer, 'null']
-        bestSellPlatformName:
+        sellPlatformName:
           type: [string, 'null']
-        bestSellUrl:
+        sellUrl:
           type: [string, 'null']
-        bestBuyPrice:
+        buyPrice:
           type: [string, 'null']
-        bestBuyCount:
+        buyCount:
           type: [integer, 'null']
-        bestBuyPlatformName:
+        buyPlatformName:
           type: [string, 'null']
-        bestBuyUrl:
+        buyUrl:
           type: [string, 'null']
+        oldestOfferUpdatedAt:
+          type: [string, 'null']
+          format: date-time
     SummaryPage:
       type: object
       required: [items]

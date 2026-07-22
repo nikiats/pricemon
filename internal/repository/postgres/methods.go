@@ -85,10 +85,11 @@ func (r *Repository) GetSummary(categoryID, offset, limit int, maxAge *int) ([]d
 		SELECT
 			i.id, i.name, i.category_id,
 			sell.price, sell.count, sell.platform_name, sell.url,
-			buy.price, buy.count, buy.platform_name, buy.url
+			buy.price, buy.count, buy.platform_name, buy.url,
+			LEAST(sell.updated_at, buy.updated_at) AS oldest_offer_updated_at
 		FROM items AS i
 		LEFT JOIN LATERAL (
-			SELECT o.price, o.count, p.name AS platform_name, o.url
+			SELECT o.price, o.count, p.name AS platform_name, o.url, o.updated_at
 			FROM offers AS o
 			JOIN platforms AS p ON p.id = o.platform_id
 			WHERE o.item_id = i.id AND o.side = 'S' AND o.count >= 1
@@ -97,7 +98,7 @@ func (r *Repository) GetSummary(categoryID, offset, limit int, maxAge *int) ([]d
 			LIMIT 1
 		) AS sell ON TRUE
 		LEFT JOIN LATERAL (
-			SELECT o.price, o.count, p.name AS platform_name, o.url
+			SELECT o.price, o.count, p.name AS platform_name, o.url, o.updated_at
 			FROM offers AS o
 			JOIN platforms AS p ON p.id = o.platform_id
 			WHERE o.item_id = i.id AND o.side = 'B' AND o.count >= 1
@@ -127,14 +128,15 @@ func (r *Repository) GetSummary(categoryID, offset, limit int, maxAge *int) ([]d
 			&item.ID,
 			&item.Name,
 			&item.CategoryID,
-			&item.BestSellPrice,
-			&item.BestSellCount,
-			&item.BestSellPlatformName,
-			&item.BestSellURL,
-			&item.BestBuyPrice,
-			&item.BestBuyCount,
-			&item.BestBuyPlatformName,
-			&item.BestBuyURL,
+			&item.SellPrice,
+			&item.SellCount,
+			&item.SellPlatformName,
+			&item.SellURL,
+			&item.BuyPrice,
+			&item.BuyCount,
+			&item.BuyPlatformName,
+			&item.BuyURL,
+			&item.OldestOfferUpdatedAt,
 		); err != nil {
 			return nil, err
 		}

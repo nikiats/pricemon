@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
@@ -13,20 +14,21 @@ import (
 	"gopricemon/internal/service"
 )
 
-const defaultPageSize = 20
+const defaultPageSize = 50
 
 type itemResponse struct {
 	ID                   int              `json:"id"`
 	Name                 string           `json:"name"`
 	CategoryID           int              `json:"categoryID"`
-	BestSellPrice        *decimal.Decimal `json:"bestSellPrice"`
-	BestSellCount        *int             `json:"bestSellCount"`
-	BestSellPlatformName *string          `json:"bestSellPlatformName"`
-	BestSellURL          *string          `json:"bestSellUrl"`
-	BestBuyPrice         *decimal.Decimal `json:"bestBuyPrice"`
-	BestBuyCount         *int             `json:"bestBuyCount"`
-	BestBuyPlatformName  *string          `json:"bestBuyPlatformName"`
-	BestBuyURL           *string          `json:"bestBuyUrl"`
+	SellPrice            *decimal.Decimal `json:"sellPrice"`
+	SellCount            *int             `json:"sellCount"`
+	SellPlatformName     *string          `json:"sellPlatformName"`
+	SellURL              *string          `json:"sellUrl"`
+	BuyPrice             *decimal.Decimal `json:"buyPrice"`
+	BuyCount             *int             `json:"buyCount"`
+	BuyPlatformName      *string          `json:"buyPlatformName"`
+	BuyURL               *string          `json:"buyUrl"`
+	OldestOfferUpdatedAt *time.Time       `json:"oldestOfferUpdatedAt"`
 }
 
 type summaryResponse struct {
@@ -70,14 +72,15 @@ func (h *Handler) getSummary(c *gin.Context) {
 			ID:                   item.ID,
 			Name:                 item.Name,
 			CategoryID:           item.CategoryID,
-			BestSellPrice:        item.BestSellPrice,
-			BestSellCount:        item.BestSellCount,
-			BestSellPlatformName: item.BestSellPlatformName,
-			BestSellURL:          item.BestSellURL,
-			BestBuyPrice:         item.BestBuyPrice,
-			BestBuyCount:         item.BestBuyCount,
-			BestBuyPlatformName:  item.BestBuyPlatformName,
-			BestBuyURL:           item.BestBuyURL,
+			SellPrice:            item.SellPrice,
+			SellCount:            item.SellCount,
+			SellPlatformName:     item.SellPlatformName,
+			SellURL:              item.SellURL,
+			BuyPrice:             item.BuyPrice,
+			BuyCount:             item.BuyCount,
+			BuyPlatformName:      item.BuyPlatformName,
+			BuyURL:               item.BuyURL,
+			OldestOfferUpdatedAt: item.OldestOfferUpdatedAt,
 		}
 	}
 

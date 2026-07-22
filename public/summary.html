@@ -12,15 +12,18 @@
 		h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.04em; }
 		form { display: flex; align-items: center; gap: 8px; color: #666; white-space: nowrap; }
 		input { width: 64px; border: 0; border-bottom: 1px solid #bdbdbd; padding: 3px 0; font: inherit; color: inherit; outline: none; }
+		#max-age { width: 72px; }
 		input:focus { border-color: #161616; }
 		button { border: 0; background: #161616; color: #fff; padding: 5px 9px; font: inherit; cursor: pointer; }
 		button:hover { background: #444; }
 		.table-wrap { overflow-x: auto; border-top: 1px solid #161616; }
-		table { width: 100%; border-collapse: collapse; min-width: 760px; }
+		table { width: 100%; border-collapse: collapse; min-width: 900px; }
 		th, td { padding: 7px 10px; border-bottom: 1px solid #e7e7e7; text-align: left; line-height: 1.2; }
 		th { color: #666; font-size: 11px; font-weight: 400; text-transform: uppercase; letter-spacing: .04em; }
 		td:first-child { max-width: 390px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
 		.platforms, .prices { white-space: nowrap; }
+		.platforms a { color: inherit; text-decoration-color: #aaa; text-underline-offset: 2px; }
+		.platforms a:hover { text-decoration-color: #161616; }
 		.arrow { color: #999; padding: 0 5px; }
 		.difference { font-weight: 700; white-space: nowrap; }
 		.positive { color: #19723b; }
@@ -35,13 +38,14 @@
 		<h1>Панель офферов</h1>
 		<form id="category-form">
 			<label>Категория <input id="category-id" type="number" min="1" value="1" required></label>
+			<label>Возраст, с <input id="max-age" type="number" min="0" step="1" inputmode="numeric" placeholder="любой"></label>
 			<button type="submit">Показать</button>
 		</form>
 	</header>
 
 	<div class="table-wrap">
 		<table>
-			<thead><tr><th>Предмет</th><th>Площадки</th><th>Цены</th><th>Разница</th></tr></thead>
+			<thead><tr><th>Предмет</th><th>Площадки</th><th>Цены</th><th>Разница</th><th>Актуально на</th></tr></thead>
 			<tbody id="summary"></tbody>
 		</table>
 	</div>
@@ -53,8 +57,9 @@
 		const status = document.querySelector('#status');
 		const form = document.querySelector('#category-form');
 		const categoryInput = document.querySelector('#category-id');
+		const maxAgeInput = document.querySelector('#max-age');
 		const sentinel = document.querySelector('#sentinel');
-		const pageSize = 30;
+		const pageSize = 50;
 		let nextOffset = null;
 		let isLoading = false;
 
@@ -68,21 +73,49 @@
 			const amount = Number(sell) - Number(buy);
 			return { value: `${amount > 0 ? '+' : ''}${price(amount)}`, className: amount > 0 ? 'positive' : amount < 0 ? 'negative' : '' };
 		}
+		function dateTime(value) {
+			if (!value) return '—';
+			return new Intl.DateTimeFormat('ru-RU', { dateStyle: 'short', timeStyle: 'medium' }).format(new Date(value));
+		}
 		function cell(className, content) {
 			const element = document.createElement('td');
 			element.className = className;
 			element.textContent = content;
 			return element;
 		}
+		function appendPlatform(cell, name, count, url) {
+			const label = `${text(name)} (${text(count)})`;
+			try {
+				const linkURL = new URL(url);
+				if (!['http:', 'https:'].includes(linkURL.protocol)) throw new Error('unsupported protocol');
+				const link = document.createElement('a');
+				link.href = linkURL.href;
+				link.target = '_blank';
+				link.rel = 'noopener noreferrer';
+				link.textContent = label;
+				cell.append(link);
+			} catch {
+				cell.append(label);
+			}
+		}
+		function platformCell(sellName, sellCount, sellURL, buyName, buyCount, buyURL) {
+			const element = document.createElement('td');
+			element.className = 'platforms';
+			appendPlatform(element, sellName, sellCount, sellURL);
+			element.append(' → ');
+			appendPlatform(element, buyName, buyCount, buyURL);
+			return element;
+		}
 		function addRows(items) {
 			for (const item of items) {
 				const row = document.createElement('tr');
-				const delta = difference(item.bestSellPrice, item.bestBuyPrice);
+				const delta = difference(item.sellPrice, item.buyPrice);
 				row.append(
 					cell('', text(item.name)),
-					cell('platforms', `${text(item.bestSellPlatformName)} → ${text(item.bestBuyPlatformName)}`),
-					cell('prices', `${price(item.bestSellPrice)} → ${price(item.bestBuyPrice)}`),
+					platformCell(item.sellPlatformName, item.sellCount, item.sellUrl, item.buyPlatformName, item.buyCount, item.buyUrl),
+					cell('prices', `${price(item.sellPrice)} → ${price(item.buyPrice)}`),
 					cell(`difference ${delta.className}`, delta.value),
+					cell('', dateTime(item.oldestOfferUpdatedAt)),
 				);
 				tableBody.append(row);
 			}
@@ -92,21 +125,31 @@
 			if (isLoading || (!reset && nextOffset === null)) return;
 			const categoryID = Number(categoryInput.value);
 			if (!Number.isInteger(categoryID) || categoryID < 1) return;
+			const maxAge = maxAgeInput.value === '' ? null : Number(maxAgeInput.value);
+			if (maxAge !== null && (!Number.isInteger(maxAge) || maxAge < 0)) return;
 			isLoading = true;
+			let pageLoaded = false;
 			if (reset) { tableBody.replaceChildren(); nextOffset = 0; }
 			status.textContent = 'Загрузка…';
 			try {
 				const params = new URLSearchParams({ limit: pageSize });
 				if (nextOffset) params.set('offset', nextOffset);
+				if (maxAge !== null) params.set('max_age', maxAge);
 				const response = await fetch(`/categories/${categoryID}/summary?${params}`);
 				if (!response.ok) throw new Error('request failed');
 				const page = await response.json();
 				addRows(page.items);
 				nextOffset = page.nextOffset ?? null;
+				pageLoaded = true;
 				status.textContent = nextOffset === null ? (tableBody.rows.length ? 'Все офферы загружены' : 'Офферы не найдены') : '';
 			} catch {
 				status.textContent = 'Не удалось загрузить офферы. Прокрутите ниже, чтобы повторить попытку.';
-			} finally { isLoading = false; }
+			} finally {
+				isLoading = false;
+				if (pageLoaded && nextOffset !== null && sentinel.getBoundingClientRect().top <= window.innerHeight + 240) {
+					loadPage();
+				}
+			}
 		}
 
 		form.addEventListener('submit', event => { event.preventDefault(); loadPage(true); });
