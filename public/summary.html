@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ru">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Панель офферов</title>
+	<style>
+		:root { color: #161616; background: #fff; font-family: Consolas, "Courier New", monospace; }
+		* { box-sizing: border-box; }
+		body { max-width: 1180px; margin: 40px auto; padding: 0 20px; font-size: 13px; }
+		header { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; margin-bottom: 22px; }
+		h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.04em; }
+		form { display: flex; align-items: center; gap: 8px; color: #666; white-space: nowrap; }
+		input { width: 64px; border: 0; border-bottom: 1px solid #bdbdbd; padding: 3px 0; font: inherit; color: inherit; outline: none; }
+		input:focus { border-color: #161616; }
+		button { border: 0; background: #161616; color: #fff; padding: 5px 9px; font: inherit; cursor: pointer; }
+		button:hover { background: #444; }
+		.table-wrap { overflow-x: auto; border-top: 1px solid #161616; }
+		table { width: 100%; border-collapse: collapse; min-width: 760px; }
+		th, td { padding: 7px 10px; border-bottom: 1px solid #e7e7e7; text-align: left; line-height: 1.2; }
+		th { color: #666; font-size: 11px; font-weight: 400; text-transform: uppercase; letter-spacing: .04em; }
+		td:first-child { max-width: 390px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+		.platforms, .prices { white-space: nowrap; }
+		.arrow { color: #999; padding: 0 5px; }
+		.difference { font-weight: 700; white-space: nowrap; }
+		.positive { color: #19723b; }
+		.negative { color: #a42626; }
+		#status { min-height: 18px; margin: 10px 0 0; color: #666; }
+		#sentinel { height: 1px; }
+		@media (max-width: 640px) { body { margin-top: 24px; padding: 0 14px; } header { align-items: flex-start; flex-direction: column; gap: 12px; } }
+	</style>
+</head>
+<body>
+	<header>
+		<h1>Панель офферов</h1>
+		<form id="category-form">
+			<label>Категория <input id="category-id" type="number" min="1" value="1" required></label>
+			<button type="submit">Показать</button>
+		</form>
+	</header>
+
+	<div class="table-wrap">
+		<table>
+			<thead><tr><th>Предмет</th><th>Площадки</th><th>Цены</th><th>Разница</th></tr></thead>
+			<tbody id="summary"></tbody>
+		</table>
+	</div>
+	<p id="status" aria-live="polite"></p>
+	<div id="sentinel" aria-hidden="true"></div>
+
+	<script>
+		const tableBody = document.querySelector('#summary');
+		const status = document.querySelector('#status');
+		const form = document.querySelector('#category-form');
+		const categoryInput = document.querySelector('#category-id');
+		const sentinel = document.querySelector('#sentinel');
+		const pageSize = 30;
+		let nextOffset = null;
+		let isLoading = false;
+
+		const text = value => value ?? '—';
+		function price(value) {
+			if (value == null) return '—';
+			return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(Number(value));
+		}
+		function difference(buy, sell) {
+			if (buy == null || sell == null) return { value: '—', className: '' };
+			const amount = Number(sell) - Number(buy);
+			return { value: `${amount > 0 ? '+' : ''}${price(amount)}`, className: amount > 0 ? 'positive' : amount < 0 ? 'negative' : '' };
+		}
+		function cell(className, content) {
+			const element = document.createElement('td');
+			element.className = className;
+			element.textContent = content;
+			return element;
+		}
+		function addRows(items) {
+			for (const item of items) {
+				const row = document.createElement('tr');
+				const delta = difference(item.bestSellPrice, item.bestBuyPrice);
+				row.append(
+					cell('', text(item.name)),
+					cell('platforms', `${text(item.bestSellPlatformName)} → ${text(item.bestBuyPlatformName)}`),
+					cell('prices', `${price(item.bestSellPrice)} → ${price(item.bestBuyPrice)}`),
+					cell(`difference ${delta.className}`, delta.value),
+				);
+				tableBody.append(row);
+			}
+		}
+
+		async function loadPage(reset = false) {
+			if (isLoading || (!reset && nextOffset === null)) return;
+			const categoryID = Number(categoryInput.value);
+			if (!Number.isInteger(categoryID) || categoryID < 1) return;
+			isLoading = true;
+			if (reset) { tableBody.replaceChildren(); nextOffset = 0; }
+			status.textContent = 'Загрузка…';
+			try {
+				const params = new URLSearchParams({ limit: pageSize });
+				if (nextOffset) params.set('offset', nextOffset);
+				const response = await fetch(`/categories/${categoryID}/summary?${params}`);
+				if (!response.ok) throw new Error('request failed');
+				const page = await response.json();
+				addRows(page.items);
+				nextOffset = page.nextOffset ?? null;
+				status.textContent = nextOffset === null ? (tableBody.rows.length ? 'Все офферы загружены' : 'Офферы не найдены') : '';
+			} catch {
+				status.textContent = 'Не удалось загрузить офферы. Прокрутите ниже, чтобы повторить попытку.';
+			} finally { isLoading = false; }
+		}
+
+		form.addEventListener('submit', event => { event.preventDefault(); loadPage(true); });
+		new IntersectionObserver(entries => { if (entries[0].isIntersecting) loadPage(); }, { rootMargin: '240px' }).observe(sentinel);
+		loadPage(true);
+	</script>
+</body>
+</html>

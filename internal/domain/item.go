@@ -15,9 +15,11 @@ type ItemSummary struct {
 	BestSellPrice        *decimal.Decimal
 	BestSellCount        *int
 	BestSellPlatformName *string
+	BestSellURL          *string
 	BestBuyPrice         *decimal.Decimal
 	BestBuyCount         *int
 	BestBuyPlatformName  *string
+	BestBuyURL           *string
 }
 
 type SummaryPage struct {

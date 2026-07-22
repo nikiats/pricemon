@@ -18,6 +18,7 @@ type Offer struct {
 	Price         decimal.Decimal
 	Count         int
 	Side          OfferSide
+	URL           *string
 }
 
 type Platform struct {

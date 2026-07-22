@@ -12,15 +12,15 @@ import (
 
 func (r *Repository) SetOffer(offer domain.Offer) error {
 	const query = `
-		INSERT INTO offers (item_id, platform_id, side, price, count)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO offers (item_id, platform_id, side, price, count, url)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (item_id, platform_id, side) DO UPDATE
-		SET price = EXCLUDED.price, count = EXCLUDED.count, updated_at = NOW()
+		SET price = EXCLUDED.price, count = EXCLUDED.count, url = EXCLUDED.url, updated_at = NOW()
 	`
 
 	_, err := r.pool.Exec(
 		context.Background(), query,
-		offer.ItemID, offer.PlatformID, offer.Side, offer.Price, offer.Count,
+		offer.ItemID, offer.PlatformID, offer.Side, offer.Price, offer.Count, offer.URL,
 	)
 	return err
 }
@@ -80,37 +80,41 @@ func (r *Repository) CreateItem(categoryID int, name string) (int, error) {
 	return itemID, err
 }
 
-func (r *Repository) GetSummary(categoryID, offset, limit int) ([]domain.ItemSummary, error) {
+func (r *Repository) GetSummary(categoryID, offset, limit int, maxAge *int) ([]domain.ItemSummary, error) {
 	const query = `
 		SELECT
 			i.id, i.name, i.category_id,
-			sell.price, sell.count, sell.platform_name,
-			buy.price, buy.count, buy.platform_name
+			sell.price, sell.count, sell.platform_name, sell.url,
+			buy.price, buy.count, buy.platform_name, buy.url
 		FROM items AS i
 		LEFT JOIN LATERAL (
-			SELECT o.price, o.count, p.name AS platform_name
+			SELECT o.price, o.count, p.name AS platform_name, o.url
 			FROM offers AS o
 			JOIN platforms AS p ON p.id = o.platform_id
 			WHERE o.item_id = i.id AND o.side = 'S' AND o.count >= 1
+				AND ($4::INTEGER IS NULL OR o.updated_at >= NOW() - $4::INTEGER * INTERVAL '1 second')
 			ORDER BY o.price, o.id
 			LIMIT 1
 		) AS sell ON TRUE
 		LEFT JOIN LATERAL (
-			SELECT o.price, o.count, p.name AS platform_name
+			SELECT o.price, o.count, p.name AS platform_name, o.url
 			FROM offers AS o
 			JOIN platforms AS p ON p.id = o.platform_id
 			WHERE o.item_id = i.id AND o.side = 'B' AND o.count >= 1
+				AND ($4::INTEGER IS NULL OR o.updated_at >= NOW() - $4::INTEGER * INTERVAL '1 second')
 			ORDER BY o.price DESC, o.id
 			LIMIT 1
 		) AS buy ON TRUE
 		WHERE i.category_id = $1
 			AND (sell.price IS NOT NULL OR buy.price IS NOT NULL)
+			AND sell.platform_name != buy.platform_name
+			AND ($4::INTEGER IS NULL OR (sell.price IS NOT NULL AND buy.price IS NOT NULL))
 		ORDER BY buy.price - sell.price DESC NULLS LAST, i.id
 		OFFSET $2
 		LIMIT $3
 	`
 
-	rows, err := r.pool.Query(context.Background(), query, categoryID, offset, limit)
+	rows, err := r.pool.Query(context.Background(), query, categoryID, offset, limit, maxAge)
 	if err != nil {
 		return nil, err
 	}
@@ -126,9 +130,11 @@ func (r *Repository) GetSummary(categoryID, offset, limit int) ([]domain.ItemSum
 			&item.BestSellPrice,
 			&item.BestSellCount,
 			&item.BestSellPlatformName,
+			&item.BestSellURL,
 			&item.BestBuyPrice,
 			&item.BestBuyCount,
 			&item.BestBuyPlatformName,
+			&item.BestBuyURL,
 		); err != nil {
 			return nil, err
 		}

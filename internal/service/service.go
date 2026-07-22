@@ -31,15 +31,18 @@ func NewService(repository repository.Repository) *Service {
 	}
 }
 
-func (s *Service) GetSummary(categoryID, offset, limit int) (domain.SummaryPage, error) {
+func (s *Service) GetSummary(categoryID, offset, limit int, maxAge *int) (domain.SummaryPage, error) {
 	if categoryID < 1 {
 		return domain.SummaryPage{}, ErrInvalidCategoryID
 	}
 	if offset < 0 || limit < 1 || limit > 100 {
 		return domain.SummaryPage{}, ErrInvalidPagination
 	}
+	if maxAge != nil && *maxAge < 0 {
+		return domain.SummaryPage{}, ErrInvalidPagination
+	}
 
-	items, err := s.repo.GetSummary(categoryID, offset, limit+1)
+	items, err := s.repo.GetSummary(categoryID, offset, limit+1, maxAge)
 	if err != nil {
 		return domain.SummaryPage{}, err
 	}

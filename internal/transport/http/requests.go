@@ -22,9 +22,11 @@ type itemResponse struct {
 	BestSellPrice        *decimal.Decimal `json:"bestSellPrice"`
 	BestSellCount        *int             `json:"bestSellCount"`
 	BestSellPlatformName *string          `json:"bestSellPlatformName"`
+	BestSellURL          *string          `json:"bestSellUrl"`
 	BestBuyPrice         *decimal.Decimal `json:"bestBuyPrice"`
 	BestBuyCount         *int             `json:"bestBuyCount"`
 	BestBuyPlatformName  *string          `json:"bestBuyPlatformName"`
+	BestBuyURL           *string          `json:"bestBuyUrl"`
 }
 
 type summaryResponse struct {
@@ -44,14 +46,20 @@ func (h *Handler) getSummary(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid pagination"})
 		return
 	}
+	maxAge, err := queryOptionalInt(c, "max_age")
+	if err != nil || (maxAge != nil && *maxAge < 0) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid max_age"})
+		return
+	}
 
-	page, err := h.service.GetSummary(categoryID, offset, limit)
+	page, err := h.service.GetSummary(categoryID, offset, limit, maxAge)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidCategoryID) || errors.Is(err, service.ErrInvalidPagination) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
+		_ = c.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
@@ -65,9 +73,11 @@ func (h *Handler) getSummary(c *gin.Context) {
 			BestSellPrice:        item.BestSellPrice,
 			BestSellCount:        item.BestSellCount,
 			BestSellPlatformName: item.BestSellPlatformName,
+			BestSellURL:          item.BestSellURL,
 			BestBuyPrice:         item.BestBuyPrice,
 			BestBuyCount:         item.BestBuyCount,
 			BestBuyPlatformName:  item.BestBuyPlatformName,
+			BestBuyURL:           item.BestBuyURL,
 		}
 	}
 
@@ -97,6 +107,19 @@ func queryInt(c *gin.Context, name string, defaultValue int) (int, error) {
 	return strconv.Atoi(value)
 }
 
+func queryOptionalInt(c *gin.Context, name string) (*int, error) {
+	value := c.Query(name)
+	if value == "" {
+		return nil, nil
+	}
+
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return nil, err
+	}
+	return &parsed, nil
+}
+
 func (h *Handler) setOffer(c *gin.Context) {
 	token, ok := bearerToken(c.GetHeader("Authorization"))
 	if !ok {
@@ -111,6 +134,7 @@ func (h *Handler) setOffer(c *gin.Context) {
 		Side       domain.OfferSide `json:"side"`
 		Price      string           `json:"price"`
 		Count      int              `json:"count"`
+		URL        *string          `json:"url"`
 	}
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
@@ -131,6 +155,7 @@ func (h *Handler) setOffer(c *gin.Context) {
 		Side:          request.Side,
 		Price:         price,
 		Count:         request.Count,
+		URL:           request.URL,
 	}
 	if err := h.service.SetOffer(offer); err != nil {
 		if errors.Is(err, service.ErrInvalidPlatformToken) {
@@ -142,6 +167,7 @@ func (h *Handler) setOffer(c *gin.Context) {
 			return
 		}
 
+		_ = c.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
@@ -177,6 +203,7 @@ func (h *Handler) setZeroCount(c *gin.Context) {
 			return
 		}
 
+		_ = c.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}

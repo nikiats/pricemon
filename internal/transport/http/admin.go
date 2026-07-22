@@ -20,6 +20,7 @@ type platformResponse struct {
 func (h *Handler) getPlatforms(c *gin.Context) {
 	platforms, err := h.service.GetPlatforms()
 	if err != nil {
+		_ = c.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
@@ -43,6 +44,7 @@ func (h *Handler) createPlatform(c *gin.Context) {
 			return
 		}
 
+		_ = c.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
@@ -64,6 +66,7 @@ func (h *Handler) regeneratePlatformToken(c *gin.Context) {
 			return
 		}
 
+		_ = c.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		return
 	}
