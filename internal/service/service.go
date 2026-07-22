@@ -83,17 +83,12 @@ func (s *Service) SetOffer(offer domain.Offer) error {
 		return ErrInvalidPlatformToken
 	}
 
-	itemID, err := s.repo.GetItemID(offer.CategoryID, offer.ItemName)
-	if errors.Is(err, repository.ErrItemNotFound) {
-		itemID, err = s.repo.CreateItem(offer.CategoryID, offer.ItemName)
-	}
+	itemID, err := s.repo.GetOrCreateItem(offer.CategoryID, offer.ItemName)
 	if err != nil {
 		return err
 	}
 
-	offer.ItemID = itemID
-
-	return s.repo.SetOffer(offer)
+	return s.repo.SetOffer(itemID, offer)
 }
 
 func (s *Service) SetZeroCount(categoryID int, itemName string, platformID int, platformToken string) (bool, error) {
@@ -114,10 +109,7 @@ func (s *Service) SetZeroCount(categoryID int, itemName string, platformID int, 
 		return false, ErrInvalidPlatformToken
 	}
 
-	itemID, err := s.repo.GetItemID(categoryID, itemName)
-	if errors.Is(err, repository.ErrItemNotFound) {
-		return false, nil
-	}
+	itemID, err := s.repo.GetOrCreateItem(categoryID, itemName)
 	if err != nil {
 		return false, err
 	}

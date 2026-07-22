@@ -1,16 +1,16 @@
 openapi: 3.1.0
 info:
-  title: Go Price Monitor API
+  title: API мониторинга цен
   version: 1.0.0
 paths:
   /categories/{categoryID}/summary:
     get:
-      summary: Get category summary
+      summary: Получить сводку по категории
       parameters:
         - $ref: '#/components/parameters/CategoryID'
         - name: offset
           in: query
-          description: Number of already returned items
+          description: Количество уже возвращённых позиций
           schema:
             type: integer
             format: int64
@@ -18,6 +18,7 @@ paths:
             default: 0
         - name: limit
           in: query
+          description: Максимальное количество предметов в ответе
           schema:
             type: integer
             minimum: 1
@@ -25,13 +26,13 @@ paths:
             default: 50
         - name: max_age
           in: query
-          description: Maximum age of both offers in seconds
+          description: Максимальный возраст обоих офферов в секундах
           schema:
             type: integer
             minimum: 0
       responses:
         '200':
-          description: Items with at least one offer
+          description: Предметы, для которых найдена подходящая пара офферов
           content:
             application/json:
               schema:
@@ -42,7 +43,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
   /offers:
     put:
-      summary: Create or update an offer
+      summary: Создать или обновить оффер
       security:
         - bearerAuth: []
       requestBody:
@@ -53,7 +54,7 @@ paths:
               $ref: '#/components/schemas/SetOfferRequest'
       responses:
         '204':
-          description: Offer saved
+          description: Оффер сохранён
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -62,8 +63,8 @@ paths:
           $ref: '#/components/responses/InternalServerError'
   /offers/zero-count:
     put:
-      summary: Set offer count to zero
-      description: Sets the count to zero for every existing offer of an item on the platform. Does not create an item or offer.
+      summary: Обнулить количество оффера
+      description: Обнуляет количество существующих офферов предмета на указанной платформе. Если предмета нет, он создаётся; новые офферы не создаются.
       security:
         - bearerAuth: []
       requestBody:
@@ -74,7 +75,7 @@ paths:
               $ref: '#/components/schemas/SetZeroCountRequest'
       responses:
         '200':
-          description: Offer count updated or no offer found
+          description: Количество оффера обновлено либо оффер не найден
           content:
             application/json:
               schema:
@@ -87,12 +88,12 @@ paths:
           $ref: '#/components/responses/InternalServerError'
   /admin/platforms:
     get:
-      summary: List platform tokens
+      summary: Получить список токенов платформ
       security:
         - adminAuth: []
       responses:
         '200':
-          description: Platforms
+          description: Платформы
           content:
             application/json:
               schema:
@@ -104,7 +105,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
     post:
-      summary: Create a platform
+      summary: Создать платформу
       security:
         - adminAuth: []
       requestBody:
@@ -115,7 +116,7 @@ paths:
               $ref: '#/components/schemas/CreatePlatformRequest'
       responses:
         '201':
-          description: Platform created
+          description: Платформа создана
           content:
             application/json:
               schema:
@@ -128,14 +129,14 @@ paths:
           $ref: '#/components/responses/InternalServerError'
   /admin/platforms/{platformID}/token:
     put:
-      summary: Regenerate a platform token
+      summary: Перевыпустить токен платформы
       security:
         - adminAuth: []
       parameters:
         - $ref: '#/components/parameters/PlatformID'
       responses:
         '200':
-          description: New platform token
+          description: Новый токен платформы
           content:
             application/json:
               schema:
@@ -184,23 +185,32 @@ components:
           format: int64
         sellPrice:
           type: [string, 'null']
+          description: Минимальная цена продажи предмета
         sellCount:
           type: [integer, 'null']
+          description: Количество предметов в оффере продажи
         sellPlatformName:
           type: [string, 'null']
+          description: Название площадки продажи
         sellUrl:
           type: [string, 'null']
+          description: Ссылка на оффер продажи
         buyPrice:
           type: [string, 'null']
+          description: Максимальная цена покупки предмета
         buyCount:
           type: [integer, 'null']
+          description: Количество предметов в оффере покупки
         buyPlatformName:
           type: [string, 'null']
+          description: Название площадки покупки
         buyUrl:
           type: [string, 'null']
+          description: Ссылка на оффер покупки
         actualAt:
           type: [string, 'null']
           format: date-time
+          description: Наиболее старое время обновления из двух офферов
     SummaryPage:
       type: object
       required: [items]
@@ -212,6 +222,7 @@ components:
         nextOffset:
           type: integer
           format: int64
+          description: Смещение для получения следующей страницы
     SetOfferRequest:
       type: object
       required: [categoryID, itemName, platformID, side, price, count]
@@ -229,7 +240,7 @@ components:
           enum: [S, B]
         price:
           type: string
-          description: Decimal number, for example 123.45
+          description: Десятичное число, например 123.45
         count:
           type: integer
           minimum: 0
@@ -249,11 +260,11 @@ components:
           format: int64
     SetZeroCountResponse:
       type: object
-      required: [status]
+      required: [result]
       properties:
-        status:
+        result:
           type: string
-          enum: [offer not found, count set to zero]
+          enum: [no offer modified, offer count set to zero]
     Error:
       type: object
       required: [error]
@@ -287,22 +298,22 @@ components:
           type: string
   responses:
     BadRequest:
-      description: Invalid request
+      description: Некорректный запрос
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
     InternalServerError:
-      description: Internal server error
+      description: Внутренняя ошибка сервера
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
     Unauthorized:
-      description: Invalid platform token
+      description: Некорректный токен платформы
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
     AdminUnauthorized:
-      description: Invalid admin credentials
+      description: Некорректные учётные данные администратора

@@ -10,7 +10,6 @@ const (
 )
 
 type Offer struct {
-	ItemID        int
 	CategoryID    int
 	ItemName      string
 	PlatformID    int

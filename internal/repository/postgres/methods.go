@@ -10,7 +10,7 @@ import (
 	"gopricemon/internal/repository"
 )
 
-func (r *Repository) SetOffer(offer domain.Offer) error {
+func (r *Repository) SetOffer(itemID int, offer domain.Offer) error {
 	const query = `
 		INSERT INTO offers (item_id, platform_id, side, price, count, url)
 		VALUES ($1, $2, $3, $4, $5, $6)
@@ -20,7 +20,7 @@ func (r *Repository) SetOffer(offer domain.Offer) error {
 
 	_, err := r.pool.Exec(
 		context.Background(), query,
-		offer.ItemID, offer.PlatformID, offer.Side, offer.Price, offer.Count, offer.URL,
+		itemID, offer.PlatformID, offer.Side, offer.Price, offer.Count, offer.URL,
 	)
 	return err
 }
@@ -54,19 +54,7 @@ func (r *Repository) GetPlatform(platformID int) (domain.Platform, error) {
 	return platform, err
 }
 
-func (r *Repository) GetItemID(categoryID int, name string) (int, error) {
-	const query = `SELECT id FROM items WHERE category_id = $1 AND name = $2`
-
-	var itemID int
-	err := r.pool.QueryRow(context.Background(), query, categoryID, name).Scan(&itemID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return 0, repository.ErrItemNotFound
-	}
-
-	return itemID, err
-}
-
-func (r *Repository) CreateItem(categoryID int, name string) (int, error) {
+func (r *Repository) GetOrCreateItem(categoryID int, name string) (int, error) {
 	const query = `
 		INSERT INTO items (category_id, name)
 		VALUES ($1, $2)
