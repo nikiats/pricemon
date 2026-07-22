@@ -198,7 +198,7 @@ components:
           type: [string, 'null']
         buyUrl:
           type: [string, 'null']
-        oldestOfferUpdatedAt:
+        actualAt:
           type: [string, 'null']
           format: date-time
     SummaryPage:

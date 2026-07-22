@@ -17,18 +17,18 @@ import (
 const defaultPageSize = 50
 
 type itemResponse struct {
-	ID                   int              `json:"id"`
-	Name                 string           `json:"name"`
-	CategoryID           int              `json:"categoryID"`
-	SellPrice            *decimal.Decimal `json:"sellPrice"`
-	SellCount            *int             `json:"sellCount"`
-	SellPlatformName     *string          `json:"sellPlatformName"`
-	SellURL              *string          `json:"sellUrl"`
-	BuyPrice             *decimal.Decimal `json:"buyPrice"`
-	BuyCount             *int             `json:"buyCount"`
-	BuyPlatformName      *string          `json:"buyPlatformName"`
-	BuyURL               *string          `json:"buyUrl"`
-	OldestOfferUpdatedAt *time.Time       `json:"oldestOfferUpdatedAt"`
+	ID               int              `json:"id"`
+	Name             string           `json:"name"`
+	CategoryID       int              `json:"categoryID"`
+	SellPrice        *decimal.Decimal `json:"sellPrice"`
+	SellCount        *int             `json:"sellCount"`
+	SellPlatformName *string          `json:"sellPlatformName"`
+	SellURL          *string          `json:"sellUrl"`
+	BuyPrice         *decimal.Decimal `json:"buyPrice"`
+	BuyCount         *int             `json:"buyCount"`
+	BuyPlatformName  *string          `json:"buyPlatformName"`
+	BuyURL           *string          `json:"buyUrl"`
+	ActualAt         *time.Time       `json:"actualAt"`
 }
 
 type summaryResponse struct {
@@ -69,18 +69,18 @@ func (h *Handler) getSummary(c *gin.Context) {
 	items := make([]itemResponse, len(page.Items))
 	for i, item := range page.Items {
 		items[i] = itemResponse{
-			ID:                   item.ID,
-			Name:                 item.Name,
-			CategoryID:           item.CategoryID,
-			SellPrice:            item.SellPrice,
-			SellCount:            item.SellCount,
-			SellPlatformName:     item.SellPlatformName,
-			SellURL:              item.SellURL,
-			BuyPrice:             item.BuyPrice,
-			BuyCount:             item.BuyCount,
-			BuyPlatformName:      item.BuyPlatformName,
-			BuyURL:               item.BuyURL,
-			OldestOfferUpdatedAt: item.OldestOfferUpdatedAt,
+			ID:               item.ID,
+			Name:             item.Name,
+			CategoryID:       item.CategoryID,
+			SellPrice:        item.SellPrice,
+			SellCount:        item.SellCount,
+			SellPlatformName: item.SellPlatformName,
+			SellURL:          item.SellURL,
+			BuyPrice:         item.BuyPrice,
+			BuyCount:         item.BuyCount,
+			BuyPlatformName:  item.BuyPlatformName,
+			BuyURL:           item.BuyURL,
+			ActualAt:         item.ActualAt,
 		}
 	}
 

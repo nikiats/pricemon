@@ -115,7 +115,7 @@
 					platformCell(item.sellPlatformName, item.sellCount, item.sellUrl, item.buyPlatformName, item.buyCount, item.buyUrl),
 					cell('prices', `${price(item.sellPrice)} → ${price(item.buyPrice)}`),
 					cell(`difference ${delta.className}`, delta.value),
-					cell('', dateTime(item.oldestOfferUpdatedAt)),
+					cell('', dateTime(item.actualAt)),
 				);
 				tableBody.append(row);
 			}

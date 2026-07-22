@@ -13,18 +13,18 @@ type Item struct {
 }
 
 type ItemSummary struct {
-	ID                   int
-	Name                 string
-	CategoryID           int
-	SellPrice            *decimal.Decimal
-	SellCount            *int
-	SellPlatformName     *string
-	SellURL              *string
-	BuyPrice             *decimal.Decimal
-	BuyCount             *int
-	BuyPlatformName      *string
-	BuyURL               *string
-	OldestOfferUpdatedAt *time.Time
+	ID               int
+	Name             string
+	CategoryID       int
+	SellPrice        *decimal.Decimal
+	SellCount        *int
+	SellPlatformName *string
+	SellURL          *string
+	BuyPrice         *decimal.Decimal
+	BuyCount         *int
+	BuyPlatformName  *string
+	BuyURL           *string
+	ActualAt         *time.Time
 }
 
 type SummaryPage struct {

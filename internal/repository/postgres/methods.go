@@ -84,33 +84,18 @@ func (r *Repository) GetSummary(categoryID, offset, limit int, maxAge *int) ([]d
 	const query = `
 		SELECT
 			i.id, i.name, i.category_id,
-			sell.price, sell.count, sell.platform_name, sell.url,
-			buy.price, buy.count, buy.platform_name, buy.url,
-			LEAST(sell.updated_at, buy.updated_at) AS oldest_offer_updated_at
-		FROM items AS i
-		LEFT JOIN LATERAL (
-			SELECT o.price, o.count, p.name AS platform_name, o.url, o.updated_at
-			FROM offers AS o
-			JOIN platforms AS p ON p.id = o.platform_id
-			WHERE o.item_id = i.id AND o.side = 'S' AND o.count >= 1
-				AND ($4::INTEGER IS NULL OR o.updated_at >= NOW() - $4::INTEGER * INTERVAL '1 second')
-			ORDER BY o.price, o.id
-			LIMIT 1
-		) AS sell ON TRUE
-		LEFT JOIN LATERAL (
-			SELECT o.price, o.count, p.name AS platform_name, o.url, o.updated_at
-			FROM offers AS o
-			JOIN platforms AS p ON p.id = o.platform_id
-			WHERE o.item_id = i.id AND o.side = 'B' AND o.count >= 1
-				AND ($4::INTEGER IS NULL OR o.updated_at >= NOW() - $4::INTEGER * INTERVAL '1 second')
-			ORDER BY o.price DESC, o.id
-			LIMIT 1
-		) AS buy ON TRUE
+			sell.price, sell.count, sell_platform.name, sell.url,
+			buy.price, buy.count, buy_platform.name, buy.url,
+			summary.actual_at
+		FROM item_summaries AS summary
+		JOIN items AS i ON i.id = summary.item_id
+		JOIN offers AS sell ON sell.id = summary.sell_offer_id
+		JOIN platforms AS sell_platform ON sell_platform.id = sell.platform_id
+		JOIN offers AS buy ON buy.id = summary.buy_offer_id
+		JOIN platforms AS buy_platform ON buy_platform.id = buy.platform_id
 		WHERE i.category_id = $1
-			AND (sell.price IS NOT NULL OR buy.price IS NOT NULL)
-			AND sell.platform_name != buy.platform_name
-			AND ($4::INTEGER IS NULL OR (sell.price IS NOT NULL AND buy.price IS NOT NULL))
-		ORDER BY buy.price - sell.price DESC NULLS LAST, i.id
+			AND ($4::INTEGER IS NULL OR summary.actual_at >= NOW() - $4::INTEGER * INTERVAL '1 second')
+		ORDER BY summary.price_difference DESC, i.id
 		OFFSET $2
 		LIMIT $3
 	`
@@ -136,7 +121,7 @@ func (r *Repository) GetSummary(categoryID, offset, limit int, maxAge *int) ([]d
 			&item.BuyCount,
 			&item.BuyPlatformName,
 			&item.BuyURL,
-			&item.OldestOfferUpdatedAt,
+			&item.ActualAt,
 		); err != nil {
 			return nil, err
 		}
