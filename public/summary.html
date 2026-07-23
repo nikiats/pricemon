@@ -144,11 +144,11 @@
 			const element = document.createElement('td');
 			element.className = 'platforms';
 			appendPlatform(element, item.sellPlatformName, item.sellCount, item.sellUrl);
-			const sellTask = taskButton(item, item.sellPlatformName, 'sell', item.sellPrice);
+			const sellTask = taskButton(item, item.sellPlatformName, 'buy', item.sellPrice);
 			if (sellTask) element.append(sellTask);
 			element.append(' → ');
 			appendPlatform(element, item.buyPlatformName, item.buyCount, item.buyUrl);
-			const buyTask = taskButton(item, item.buyPlatformName, 'buy', item.buyPrice);
+			const buyTask = taskButton(item, item.buyPlatformName, 'sell', item.buyPrice);
 			if (buyTask) element.append(buyTask);
 			return element;
 		}
