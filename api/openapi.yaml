@@ -88,6 +88,41 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /inventory:
+    put:
+      summary: Полностью обновить инвентарь
+      description: Атомарно заменяет инвентарь переданным полным списком предметов.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplaceInventoryRequest'
+      responses:
+        '204':
+          description: Инвентарь обновлён
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      summary: Изменить количество предметов
+      description: Атомарно применяет переданные изменения количества предметов.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeInventoryRequest'
+      responses:
+        '204':
+          description: Инвентарь изменён
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /platforms:
     get:
       summary: Получить платформы
@@ -270,6 +305,48 @@ components:
         result:
           type: string
           enum: [no offer modified, offer count set to zero]
+    ReplaceInventoryRequest:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          description: Полный актуальный список предметов.
+          items:
+            $ref: '#/components/schemas/InventoryItem'
+    InventoryItem:
+      type: object
+      required: [categoryID, itemName, quantity]
+      properties:
+        categoryID:
+          type: integer
+          format: int64
+        itemName:
+          type: string
+        quantity:
+          type: integer
+          minimum: 0
+    ChangeInventoryRequest:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          description: Изменения количества предметов.
+          items:
+            $ref: '#/components/schemas/InventoryDelta'
+    InventoryDelta:
+      type: object
+      required: [categoryID, itemName, delta]
+      properties:
+        categoryID:
+          type: integer
+          format: int64
+        itemName:
+          type: string
+        delta:
+          type: integer
+          not: { const: 0 }
     Error:
       type: object
       required: [error]
@@ -316,6 +393,12 @@ components:
             $ref: '#/components/schemas/Error'
     NotFound:
       description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Изменение невозможно из-за текущего состояния инвентаря
       content:
         application/json:
           schema:
