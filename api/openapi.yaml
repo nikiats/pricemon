@@ -123,6 +123,156 @@ paths:
           $ref: '#/components/responses/Conflict'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /tasks/claim:
+    post:
+      summary: Взять задачу
+      description: Выдаёт исполнителю свободную или просроченную задачу указанной платформы.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClaimTaskRequest'
+      responses:
+        '200':
+          description: Задача с активным лизингом
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimedTask'
+        '204':
+          description: Подходящих задач нет
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /tasks/{taskID}/lease:
+    put:
+      summary: Продлить лизинг задачи
+      description: Продлевает лизинг задачи на указанное время в пределах лимита конфигурации.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TaskID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExtendTaskLeaseRequest'
+      responses:
+        '200':
+          description: Новое время истечения лизинга
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lease'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /tasks/{taskID}/result:
+    post:
+      summary: Сообщить результат задачи
+      description: Завершает активную задачу с результатом completed или failed.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TaskID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportTaskResultRequest'
+      responses:
+        '204':
+          description: Результат сохранён
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /executors:
+    get:
+      summary: Получить исполнителей
+      description: Возвращает всех исполнителей и их токены доступа.
+      responses:
+        '200':
+          description: Исполнители
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Executor'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      summary: Создать исполнителя
+      description: Создаёт исполнителя и выпускает для него токен доступа.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExecutorRequest'
+      responses:
+        '201':
+          description: Исполнитель создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Executor'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /executors/{executorID}/token:
+    put:
+      summary: Перевыпустить токен исполнителя
+      description: Заменяет токен доступа указанного исполнителя.
+      parameters:
+        - $ref: '#/components/parameters/ExecutorID'
+      responses:
+        '200':
+          description: Новый токен исполнителя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Token'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /executors/{executorID}:
+    delete:
+      summary: Удалить исполнителя
+      description: Удаляет исполнителя.
+      parameters:
+        - $ref: '#/components/parameters/ExecutorID'
+      responses:
+        '204':
+          description: Исполнитель удалён
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /platforms:
     get:
       summary: Получить платформы
@@ -205,6 +355,20 @@ components:
         format: int64
     PlatformID:
       name: platformID
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    ExecutorID:
+      name: executorID
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    TaskID:
+      name: taskID
       in: path
       required: true
       schema:
@@ -347,6 +511,63 @@ components:
         delta:
           type: integer
           not: { const: 0 }
+    ClaimTaskRequest:
+      type: object
+      required: [platformID]
+      properties:
+        platformID:
+          type: integer
+          format: int64
+    ClaimedTask:
+      type: object
+      required: [id, platformID, actionType, price, leaseToken, leaseUntil]
+      properties:
+        id:
+          type: integer
+          format: int64
+        platformID:
+          type: integer
+          format: int64
+        actionType:
+          type: string
+          enum: [buy, sell]
+        price:
+          type: string
+        leaseToken:
+          type: string
+          format: uuid
+        leaseUntil:
+          type: string
+          format: date-time
+    ExtendTaskLeaseRequest:
+      type: object
+      required: [leaseToken, seconds]
+      properties:
+        leaseToken:
+          type: string
+          format: uuid
+        seconds:
+          type: integer
+          minimum: 1
+    Lease:
+      type: object
+      required: [leaseUntil]
+      properties:
+        leaseUntil:
+          type: string
+          format: date-time
+    ReportTaskResultRequest:
+      type: object
+      required: [leaseToken, status]
+      properties:
+        leaseToken:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [completed, failed]
+        error:
+          type: string
     Error:
       type: object
       required: [error]
@@ -354,6 +575,18 @@ components:
         error:
           type: string
     Platform:
+      type: object
+      required: [id, name, token]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        token:
+          type: string
+          format: uuid
+    Executor:
       type: object
       required: [id, name, token]
       properties:
@@ -373,6 +606,12 @@ components:
           type: string
           format: uuid
     CreatePlatformRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+    CreateExecutorRequest:
       type: object
       required: [name]
       properties:
@@ -404,7 +643,7 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
     Unauthorized:
-      description: Некорректный токен платформы
+      description: Некорректный токен доступа
       content:
         application/json:
           schema:

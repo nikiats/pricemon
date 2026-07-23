@@ -9,14 +9,18 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const defaultTaskLeaseMaxSeconds = 300
+
 type Config struct {
-	DatabaseURL string
-	HTTPPort    int
+	DatabaseURL         string
+	HTTPPort            int
+	TaskLeaseMaxSeconds int
 }
 
 var (
 	ErrDatabaseConfig = errors.New("database connection url not set or incorrect")
 	ErrPort           = errors.New("http server port not specified or incorrect")
+	ErrTaskLeaseMax   = errors.New("task lease max seconds incorrect")
 )
 
 func LoadConfig() (*Config, error) {
@@ -38,8 +42,17 @@ func LoadConfig() (*Config, error) {
 		return nil, ErrPort
 	}
 
+	taskLeaseMaxSeconds := defaultTaskLeaseMaxSeconds
+	if taskLeaseMaxRaw := os.Getenv("TASK_LEASE_MAX_SECONDS"); taskLeaseMaxRaw != "" {
+		taskLeaseMaxSeconds, err = strconv.Atoi(taskLeaseMaxRaw)
+		if err != nil || taskLeaseMaxSeconds < 1 {
+			return nil, ErrTaskLeaseMax
+		}
+	}
+
 	return &Config{
-		DatabaseURL: databaseURL,
-		HTTPPort:    httpPort,
+		DatabaseURL:         databaseURL,
+		HTTPPort:            httpPort,
+		TaskLeaseMaxSeconds: taskLeaseMaxSeconds,
 	}, nil
 }

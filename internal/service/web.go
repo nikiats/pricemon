@@ -15,14 +15,19 @@ var (
 	ErrInvalidPlatformName   = errors.New("invalid platform name")
 	ErrPlatformAlreadyExists = errors.New("platform already exists")
 	ErrPlatformNotFound      = errors.New("platform not found")
+	ErrInvalidExecutorID     = errors.New("invalid executor ID")
+	ErrInvalidExecutorName   = errors.New("invalid executor name")
+	ErrExecutorAlreadyExists = errors.New("executor already exists")
+	ErrExecutorNotFound      = errors.New("executor not found")
 )
 
 type Service struct {
-	repo repository.Repository
+	repo                repository.Repository
+	taskLeaseMaxSeconds int
 }
 
-func NewService(repository repository.Repository) *Service {
-	return &Service{repo: repository}
+func NewService(repository repository.Repository, taskLeaseMaxSeconds int) *Service {
+	return &Service{repo: repository, taskLeaseMaxSeconds: taskLeaseMaxSeconds}
 }
 
 func (s *Service) GetSummary(categoryID, offset, limit int, maxAge *int) (domain.SummaryPage, error) {
@@ -90,4 +95,48 @@ func (s *Service) RegeneratePlatformToken(platformID int) (string, error) {
 	}
 
 	return s.repo.RegeneratePlatformToken(platformID)
+}
+
+func (s *Service) GetExecutors() ([]domain.Executor, error) {
+	return s.repo.GetExecutors()
+}
+
+func (s *Service) CreateExecutor(name string) (domain.Executor, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return domain.Executor{}, ErrInvalidExecutorName
+	}
+
+	executor, err := s.repo.CreateExecutor(name)
+	if errors.Is(err, repository.ErrExecutorAlreadyExists) {
+		return domain.Executor{}, ErrExecutorAlreadyExists
+	}
+
+	return executor, err
+}
+
+func (s *Service) DeleteExecutor(executorID int) error {
+	if executorID < 1 {
+		return ErrInvalidExecutorID
+	}
+
+	err := s.repo.DeleteExecutor(executorID)
+	if errors.Is(err, repository.ErrExecutorNotFound) {
+		return ErrExecutorNotFound
+	}
+
+	return err
+}
+
+func (s *Service) RegenerateExecutorToken(executorID int) (string, error) {
+	if executorID < 1 {
+		return "", ErrInvalidExecutorID
+	}
+
+	token, err := s.repo.RegenerateExecutorToken(executorID)
+	if errors.Is(err, repository.ErrExecutorNotFound) {
+		return "", ErrExecutorNotFound
+	}
+
+	return token, err
 }

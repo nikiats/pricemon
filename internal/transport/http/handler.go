@@ -20,6 +20,13 @@ type Service interface {
 	CreatePlatform(name string) (domain.Platform, error)
 	DeletePlatform(platformID int) error
 	RegeneratePlatformToken(platformID int) (string, error)
+	GetExecutors() ([]domain.Executor, error)
+	CreateExecutor(name string) (domain.Executor, error)
+	DeleteExecutor(executorID int) error
+	RegenerateExecutorToken(executorID int) (string, error)
+	ClaimTask(platformID int, executorToken string) (domain.Task, bool, error)
+	ExtendTaskLease(taskID int, leaseToken string, leaseSeconds int, executorToken string) (time.Time, error)
+	ReportTaskResult(taskID int, leaseToken string, status domain.TaskStatus, errorText *string, executorToken string) error
 }
 
 type Handler struct {
@@ -46,6 +53,16 @@ func (h *Handler) Register(router *gin.Engine) {
 	platforms.POST("", h.createPlatform)
 	platforms.DELETE("/:platformID", h.deletePlatform)
 	platforms.PUT("/:platformID/token", h.regeneratePlatformToken)
+
+	executors := router.Group("/executors")
+	executors.GET("", h.executorsPageOrList)
+	executors.POST("", h.createExecutor)
+	executors.DELETE("/:executorID", h.deleteExecutor)
+	executors.PUT("/:executorID/token", h.regenerateExecutorToken)
+
+	router.POST("/tasks/claim", h.claimTask)
+	router.PUT("/tasks/:taskID/lease", h.extendTaskLease)
+	router.POST("/tasks/:taskID/result", h.reportTaskResult)
 }
 
 func serverErrorLogger(c *gin.Context) {

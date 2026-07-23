@@ -2,6 +2,7 @@ package repository
 
 import (
 	"errors"
+	"time"
 
 	"gopricemon/internal/domain"
 )
@@ -9,6 +10,8 @@ import (
 var (
 	ErrPlatformAlreadyExists = errors.New("platform already exists")
 	ErrPlatformNotFound      = errors.New("platform not found")
+	ErrExecutorAlreadyExists = errors.New("executor already exists")
+	ErrExecutorNotFound      = errors.New("executor not found")
 )
 
 type Repository interface {
@@ -23,4 +26,12 @@ type Repository interface {
 	CreatePlatform(name string) (domain.Platform, error)
 	DeletePlatform(platformID int) error
 	RegeneratePlatformToken(platformID int) (string, error)
+	GetExecutors() ([]domain.Executor, error)
+	CreateExecutor(name string) (domain.Executor, error)
+	DeleteExecutor(executorID int) error
+	RegenerateExecutorToken(executorID int) (string, error)
+	GetExecutorByToken(token string) (domain.Executor, error)
+	ClaimTask(platformID, executorID, leaseSeconds int) (domain.Task, bool, error)
+	ExtendTaskLease(taskID, executorID int, leaseToken string, leaseSeconds int) (time.Time, bool, error)
+	ReportTaskResult(taskID, executorID int, leaseToken string, status domain.TaskStatus, errorText *string) (bool, error)
 }

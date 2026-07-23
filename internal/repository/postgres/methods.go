@@ -292,3 +292,78 @@ func (r *Repository) RegeneratePlatformToken(platformID int) (string, error) {
 	).Scan(&token)
 	return token, err
 }
+
+func (r *Repository) GetExecutors() ([]domain.Executor, error) {
+	const query = `
+		SELECT id, name, token::text
+		FROM executors
+		ORDER BY id
+	`
+
+	rows, err := r.pool.Query(context.Background(), query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var executors []domain.Executor
+	for rows.Next() {
+		var executor domain.Executor
+		if err = rows.Scan(&executor.ID, &executor.Name, &executor.Token); err != nil {
+			return nil, err
+		}
+		executors = append(executors, executor)
+	}
+
+	return executors, rows.Err()
+}
+
+func (r *Repository) CreateExecutor(name string) (domain.Executor, error) {
+	const query = `
+		INSERT INTO executors (name)
+		VALUES ($1)
+		ON CONFLICT (name) DO NOTHING
+		RETURNING id, name, token::text
+	`
+
+	var executor domain.Executor
+	err := r.pool.QueryRow(context.Background(), query, name).Scan(
+		&executor.ID, &executor.Name, &executor.Token,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.Executor{}, repository.ErrExecutorAlreadyExists
+	}
+
+	return executor, err
+}
+
+func (r *Repository) DeleteExecutor(executorID int) error {
+	result, err := r.pool.Exec(
+		context.Background(), `DELETE FROM executors WHERE id = $1`, executorID,
+	)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() == 0 {
+		return repository.ErrExecutorNotFound
+	}
+
+	return nil
+}
+
+func (r *Repository) RegenerateExecutorToken(executorID int) (string, error) {
+	const query = `
+		UPDATE executors
+		SET token = gen_random_uuid()
+		WHERE id = $1
+		RETURNING token::text
+	`
+
+	var token string
+	err := r.pool.QueryRow(context.Background(), query, executorID).Scan(&token)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", repository.ErrExecutorNotFound
+	}
+
+	return token, err
+}

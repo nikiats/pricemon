@@ -24,6 +24,12 @@ type InventoryDelta struct {
 	Delta      int    `json:"delta"`
 }
 
+type Executor struct {
+	ID    int
+	Name  string
+	Token string
+}
+
 type ItemSummary struct {
 	ID               int
 	Name             string

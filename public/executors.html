@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>Площадки</title>
+	<title>Исполнители</title>
 	<style>
 		:root { color: #161616; background: #fff; font-family: Consolas, "Courier New", monospace; }
 		* { box-sizing: border-box; }
@@ -30,46 +30,43 @@
 	<header>
 		<div class="title">
 			<a class="home-link" href="/">← Назад</a>
-			<h1>Площадки</h1>
+			<h1>Исполнители</h1>
 		</div>
-		<form id="create"><input name="name" placeholder="Название новой площадки" required><button>Добавить площадку</button></form>
+		<form id="create"><input name="name" placeholder="Название нового исполнителя" required><button>Добавить исполнителя</button></form>
 	</header>
 	<div class="table-wrap">
 		<table>
 			<thead><tr><th>ID</th><th>Название</th><th>Токен</th><th>Действия</th></tr></thead>
-			<tbody id="platforms"></tbody>
+			<tbody id="executors"></tbody>
 		</table>
 	</div>
 	<p id="status" class="status" aria-live="polite"></p>
 	<script>
-		const body = document.querySelector('#platforms');
+		const body = document.querySelector('#executors');
 		const status = document.querySelector('#status');
 		const form = document.querySelector('#create');
 
 		async function load() {
-			const response = await fetch('/platforms', {
-				headers: { Accept: 'application/json' },
-				cache: 'no-store',
-			});
-			if (!response.ok) return status.textContent = 'Не удалось загрузить площадки';
-			const platforms = await response.json();
-			body.replaceChildren(...platforms.map(platform => {
+			const response = await fetch('/executors', { headers: { Accept: 'application/json' }, cache: 'no-store' });
+			if (!response.ok) return status.textContent = 'Не удалось загрузить исполнителей';
+			const executors = await response.json();
+			body.replaceChildren(...executors.map(executor => {
 				const row = document.createElement('tr');
-				for (const value of [platform.id, platform.name, platform.token]) {
+				for (const value of [executor.id, executor.name, executor.token]) {
 					const cell = document.createElement('td');
 					cell.textContent = value;
 					row.append(cell);
 				}
 				const cell = document.createElement('td');
-				const button = document.createElement('button');
-				button.type = 'button';
-				button.textContent = 'Обновить токен';
-				button.onclick = () => refresh(platform.id);
-				cell.append(button);
+				const refreshButton = document.createElement('button');
+				refreshButton.type = 'button';
+				refreshButton.textContent = 'Обновить токен';
+				refreshButton.onclick = () => refresh(executor.id);
+				cell.append(refreshButton);
 				const deleteButton = document.createElement('button');
 				deleteButton.type = 'button';
 				deleteButton.textContent = 'Удалить';
-				deleteButton.onclick = () => remove(platform.id, platform.name);
+				deleteButton.onclick = () => remove(executor.id, executor.name);
 				cell.append(' ', deleteButton);
 				row.append(cell);
 				return row;
@@ -77,30 +74,30 @@
 		}
 
 		async function refresh(id) {
-			const response = await fetch('/platforms/' + id + '/token', { method: 'PUT' });
+			const response = await fetch('/executors/' + id + '/token', { method: 'PUT' });
 			if (!response.ok) return status.textContent = 'Не удалось обновить токен';
 			status.textContent = 'Токен обновлён';
 			load();
 		}
 
 		async function remove(id, name) {
-			if (!confirm(`Удалить площадку «${name}» и все её офферы?`)) return;
-			const response = await fetch('/platforms/' + id, { method: 'DELETE' });
-			if (!response.ok) return status.textContent = 'Не удалось удалить площадку';
-			status.textContent = 'Площадка удалена вместе с её офферами';
+			if (!confirm(`Удалить исполнителя «${name}»?`)) return;
+			const response = await fetch('/executors/' + id, { method: 'DELETE' });
+			if (!response.ok) return status.textContent = 'Не удалось удалить исполнителя';
+			status.textContent = 'Исполнитель удалён';
 			load();
 		}
 
 		form.onsubmit = async event => {
 			event.preventDefault();
-			const response = await fetch('/platforms', {
+			const response = await fetch('/executors', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ name: form.name.value }),
 			});
-			if (!response.ok) return status.textContent = 'Не удалось добавить площадку';
+			if (!response.ok) return status.textContent = 'Не удалось добавить исполнителя';
 			form.reset();
-			status.textContent = 'Площадка добавлена';
+			status.textContent = 'Исполнитель добавлен';
 			load();
 		};
 
