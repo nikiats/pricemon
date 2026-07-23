@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	"github.com/jackc/pgx/v5"
@@ -66,6 +67,114 @@ func (r *Repository) GetOrCreateItem(categoryID int, name string) (int, error) {
 	var itemID int
 	err := r.pool.QueryRow(context.Background(), query, categoryID, name).Scan(&itemID)
 	return itemID, err
+}
+
+func (r *Repository) ReplaceInventory(items []domain.InventoryItem) error {
+	payload, err := json.Marshal(items)
+	if err != nil {
+		return err
+	}
+
+	const query = `
+		WITH incoming AS MATERIALIZED (
+			SELECT "categoryID" AS category_id, "itemName" AS item_name, quantity
+			FROM jsonb_to_recordset($1::jsonb)
+				AS received("categoryID" BIGINT, "itemName" TEXT, quantity INTEGER)
+		),
+		resolved_items AS (
+			INSERT INTO items (category_id, name)
+			SELECT category_id, item_name
+			FROM incoming
+			ON CONFLICT (category_id, name) DO UPDATE
+			SET name = EXCLUDED.name
+			RETURNING id, category_id, name
+		),
+		resolved_inventory AS MATERIALIZED (
+			SELECT item.id AS item_id, incoming.quantity
+			FROM incoming
+			JOIN resolved_items AS item
+				ON item.category_id = incoming.category_id
+				AND item.name = incoming.item_name
+		),
+		updated_inventory AS (
+			INSERT INTO inventory (item_id, quantity)
+			SELECT item_id, quantity
+			FROM resolved_inventory
+			ON CONFLICT (item_id) DO UPDATE
+			SET quantity = EXCLUDED.quantity
+			WHERE inventory.quantity IS DISTINCT FROM EXCLUDED.quantity
+			RETURNING item_id
+		)
+		DELETE FROM inventory AS current
+		WHERE NOT EXISTS (
+			SELECT 1
+			FROM resolved_inventory AS received
+			WHERE received.item_id = current.item_id
+		)
+	`
+
+	_, err = r.pool.Exec(context.Background(), query, string(payload))
+	return err
+}
+
+func (r *Repository) ChangeInventory(items []domain.InventoryDelta) (bool, error) {
+	payload, err := json.Marshal(items)
+	if err != nil {
+		return false, err
+	}
+
+	ctx := context.Background()
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback(ctx)
+
+	const insertItemsQuery = `
+		INSERT INTO items (category_id, name)
+		SELECT "categoryID", "itemName"
+		FROM jsonb_to_recordset($1::jsonb)
+			AS received("categoryID" BIGINT, "itemName" TEXT, delta INTEGER)
+		ON CONFLICT (category_id, name) DO NOTHING
+	`
+	if _, err = tx.Exec(ctx, insertItemsQuery, string(payload)); err != nil {
+		return false, err
+	}
+
+	const insertInventoryQuery = `
+		INSERT INTO inventory (item_id, quantity)
+		SELECT item.id, 0
+		FROM jsonb_to_recordset($1::jsonb)
+			AS received("categoryID" BIGINT, "itemName" TEXT, delta INTEGER)
+		JOIN items AS item
+			ON item.category_id = received."categoryID"
+			AND item.name = received."itemName"
+		ON CONFLICT (item_id) DO NOTHING
+	`
+	if _, err = tx.Exec(ctx, insertInventoryQuery, string(payload)); err != nil {
+		return false, err
+	}
+
+	const updateInventoryQuery = `
+		UPDATE inventory
+		SET quantity = inventory.quantity + received.delta
+		FROM jsonb_to_recordset($1::jsonb)
+			AS received("categoryID" BIGINT, "itemName" TEXT, delta INTEGER)
+		JOIN items AS item
+			ON item.category_id = received."categoryID"
+			AND item.name = received."itemName"
+		WHERE inventory.item_id = item.id
+			AND inventory.quantity + received.delta >= 0
+	`
+	result, err := tx.Exec(ctx, updateInventoryQuery, string(payload))
+	if err != nil {
+		return false, err
+	}
+	if result.RowsAffected() != int64(len(items)) {
+		return false, nil
+	}
+
+	return true, tx.Commit(ctx)
 }
 
 func (r *Repository) GetSummary(categoryID, offset, limit int, maxAge *int) ([]domain.ItemSummary, error) {

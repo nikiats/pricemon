@@ -12,6 +12,18 @@ type Item struct {
 	CategoryID int
 }
 
+type InventoryItem struct {
+	CategoryID int    `json:"categoryID"`
+	ItemName   string `json:"itemName"`
+	Quantity   int    `json:"quantity"`
+}
+
+type InventoryDelta struct {
+	CategoryID int    `json:"categoryID"`
+	ItemName   string `json:"itemName"`
+	Delta      int    `json:"delta"`
+}
+
 type ItemSummary struct {
 	ID               int
 	Name             string

@@ -14,6 +14,8 @@ type Service interface {
 	GetSummary(categoryID, offset, limit int, maxAge *int) (domain.SummaryPage, error)
 	SetOffer(offer domain.Offer) error
 	SetZeroCount(categoryID int, itemName string, platformID int, platformToken string) (bool, error)
+	ReplaceInventory(items []domain.InventoryItem) error
+	ChangeInventory(items []domain.InventoryDelta) error
 	GetPlatforms() ([]domain.Platform, error)
 	CreatePlatform(name string) (domain.Platform, error)
 	DeletePlatform(platformID int) error
@@ -36,6 +38,8 @@ func (h *Handler) Register(router *gin.Engine) {
 	router.GET("/summary", h.summaryPage)
 	router.PUT("/offers", h.setOffer)
 	router.PUT("/offers/zero-count", h.setZeroCount)
+	router.PUT("/inventory", h.replaceInventory)
+	router.PATCH("/inventory", h.changeInventory)
 
 	platforms := router.Group("/platforms")
 	platforms.GET("", h.platformsPageOrList)

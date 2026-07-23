@@ -16,6 +16,8 @@ type Repository interface {
 	SetZeroCount(itemID, platformID int) (bool, error)
 	GetPlatform(platformID int) (domain.Platform, error)
 	GetOrCreateItem(categoryID int, name string) (int, error)
+	ReplaceInventory(items []domain.InventoryItem) error
+	ChangeInventory(items []domain.InventoryDelta) (bool, error)
 	GetSummary(categoryID, offset, limit int, maxAge *int) ([]domain.ItemSummary, error)
 	GetPlatforms() ([]domain.Platform, error)
 	CreatePlatform(name string) (domain.Platform, error)
