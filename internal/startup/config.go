@@ -10,15 +10,13 @@ import (
 )
 
 type Config struct {
-	DatabaseURL   string
-	HTTPPort      int
-	AdminPassword string
+	DatabaseURL string
+	HTTPPort    int
 }
 
 var (
 	ErrDatabaseConfig = errors.New("database connection url not set or incorrect")
 	ErrPort           = errors.New("http server port not specified or incorrect")
-	ErrAdminPassword  = errors.New("admin password not set")
 )
 
 func LoadConfig() (*Config, error) {
@@ -40,14 +38,8 @@ func LoadConfig() (*Config, error) {
 		return nil, ErrPort
 	}
 
-	adminPassword := os.Getenv("ADMIN_PASSWORD")
-	if adminPassword == "" {
-		return nil, ErrAdminPassword
-	}
-
 	return &Config{
-		DatabaseURL:   databaseURL,
-		HTTPPort:      httpPort,
-		AdminPassword: adminPassword,
+		DatabaseURL: databaseURL,
+		HTTPPort:    httpPort,
 	}, nil
 }

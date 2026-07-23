@@ -9,7 +9,10 @@
 		* { box-sizing: border-box; }
 		body { max-width: 1180px; margin: 40px auto; padding: 0 20px; font-size: 13px; }
 		header { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; margin-bottom: 22px; }
+		.title { display: flex; align-items: baseline; gap: 10px; }
 		h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.04em; }
+		.home-link { background: #161616; color: #fff; padding: 5px 9px; font: inherit; line-height: 1.2; text-decoration: none; }
+		.home-link:hover { background: #444; }
 		form { display: flex; align-items: center; gap: 8px; color: #666; white-space: nowrap; }
 		input { width: 64px; border: 0; border-bottom: 1px solid #bdbdbd; padding: 3px 0; font: inherit; color: inherit; outline: none; }
 		#max-age { width: 72px; }
@@ -35,7 +38,10 @@
 </head>
 <body>
 	<header>
-		<h1>Панель офферов</h1>
+		<div class="title">
+			<a class="home-link" href="/">← Назад</a>
+			<h1>Сводная таблица</h1>
+		</div>
 		<form id="category-form">
 			<label>Категория <input id="category-id" type="number" min="1" value="1" required></label>
 			<label>Возраст, с <input id="max-age" type="number" min="0" step="1" inputmode="numeric" placeholder="любой"></label>

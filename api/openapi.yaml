@@ -6,6 +6,7 @@ paths:
   /categories/{categoryID}/summary:
     get:
       summary: Получить сводку по категории
+      description: Возвращает страницу предметов с ценами покупки и продажи.
       parameters:
         - $ref: '#/components/parameters/CategoryID'
         - name: offset
@@ -44,6 +45,7 @@ paths:
   /offers:
     put:
       summary: Создать или обновить оффер
+      description: Сохраняет актуальные данные одного оффера платформы.
       security:
         - bearerAuth: []
       requestBody:
@@ -64,7 +66,7 @@ paths:
   /offers/zero-count:
     put:
       summary: Обнулить количество оффера
-      description: Обнуляет количество существующих офферов предмета на указанной платформе. Если предмета нет, он создаётся; новые офферы не создаются.
+      description: Обнуляет количество офферов предмета на указанной платформе.
       security:
         - bearerAuth: []
       requestBody:
@@ -86,11 +88,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalServerError'
-  /admin/platforms:
+  /platforms:
     get:
-      summary: Получить список токенов платформ
-      security:
-        - adminAuth: []
+      summary: Получить платформы
+      description: Возвращает все платформы и их токены доступа.
       responses:
         '200':
           description: Платформы
@@ -100,14 +101,11 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Platform'
-        '401':
-          $ref: '#/components/responses/AdminUnauthorized'
         '500':
           $ref: '#/components/responses/InternalServerError'
     post:
       summary: Создать платформу
-      security:
-        - adminAuth: []
+      description: Создаёт платформу и выпускает для неё токен доступа.
       requestBody:
         required: true
         content:
@@ -123,15 +121,12 @@ paths:
                 $ref: '#/components/schemas/Platform'
         '400':
           $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/AdminUnauthorized'
         '500':
           $ref: '#/components/responses/InternalServerError'
-  /admin/platforms/{platformID}/token:
+  /platforms/{platformID}/token:
     put:
       summary: Перевыпустить токен платформы
-      security:
-        - adminAuth: []
+      description: Заменяет токен доступа указанной платформы.
       parameters:
         - $ref: '#/components/parameters/PlatformID'
       responses:
@@ -143,8 +138,21 @@ paths:
                 $ref: '#/components/schemas/Token'
         '400':
           $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/AdminUnauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /platforms/{platformID}:
+    delete:
+      summary: Удалить платформу
+      description: Удаляет платформу и все связанные с ней офферы.
+      parameters:
+        - $ref: '#/components/parameters/PlatformID'
+      responses:
+        '204':
+          description: Платформа удалена
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalServerError'
 components:
@@ -152,9 +160,6 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
-    adminAuth:
-      type: http
-      scheme: basic
   parameters:
     CategoryID:
       name: categoryID
@@ -309,11 +314,15 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
     Unauthorized:
       description: Некорректный токен платформы
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-    AdminUnauthorized:
-      description: Некорректные учётные данные администратора

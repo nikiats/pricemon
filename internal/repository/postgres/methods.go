@@ -162,6 +162,20 @@ func (r *Repository) CreatePlatform(name string) (domain.Platform, error) {
 	return platform, err
 }
 
+func (r *Repository) DeletePlatform(platformID int) error {
+	result, err := r.pool.Exec(
+		context.Background(), `DELETE FROM platforms WHERE id = $1`, platformID,
+	)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() == 0 {
+		return repository.ErrPlatformNotFound
+	}
+
+	return nil
+}
+
 func (r *Repository) RegeneratePlatformToken(platformID int) (string, error) {
 	var token string
 	err := r.pool.QueryRow(

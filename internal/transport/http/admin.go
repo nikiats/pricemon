@@ -52,6 +52,32 @@ func (h *Handler) createPlatform(c *gin.Context) {
 	c.JSON(http.StatusCreated, platformResponses([]domain.Platform{platform})[0])
 }
 
+func (h *Handler) deletePlatform(c *gin.Context) {
+	platformID, err := strconv.Atoi(c.Param("platformID"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid platform ID"})
+		return
+	}
+
+	err = h.service.DeletePlatform(platformID)
+	if err != nil {
+		if errors.Is(err, service.ErrInvalidPlatformID) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if errors.Is(err, service.ErrPlatformNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+
+		_ = c.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
 func (h *Handler) regeneratePlatformToken(c *gin.Context) {
 	platformID, err := strconv.Atoi(c.Param("platformID"))
 	if err != nil {

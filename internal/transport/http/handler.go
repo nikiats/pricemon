@@ -1,7 +1,6 @@
 package http
 
 import (
-	"crypto/subtle"
 	"log"
 	"net/http"
 	"time"
@@ -17,31 +16,32 @@ type Service interface {
 	SetZeroCount(categoryID int, itemName string, platformID int, platformToken string) (bool, error)
 	GetPlatforms() ([]domain.Platform, error)
 	CreatePlatform(name string) (domain.Platform, error)
+	DeletePlatform(platformID int) error
 	RegeneratePlatformToken(platformID int) (string, error)
 }
 
 type Handler struct {
-	service       Service
-	adminPassword string
+	service Service
 }
 
-func NewHandler(service Service, adminPassword string) *Handler {
-	return &Handler{service: service, adminPassword: adminPassword}
+func NewHandler(service Service) *Handler {
+	return &Handler{service: service}
 }
 
 func (h *Handler) Register(router *gin.Engine) {
 	router.Use(cors, serverErrorLogger)
 
 	router.GET("/categories/:categoryID/summary", h.getSummary)
+	router.GET("/", h.indexPage)
 	router.GET("/summary", h.summaryPage)
 	router.PUT("/offers", h.setOffer)
 	router.PUT("/offers/zero-count", h.setZeroCount)
 
-	admin := router.Group("/admin", h.adminAuth)
-	admin.GET("", h.adminPage)
-	admin.GET("/platforms", h.getPlatforms)
-	admin.POST("/platforms", h.createPlatform)
-	admin.PUT("/platforms/:platformID/token", h.regeneratePlatformToken)
+	platforms := router.Group("/platforms")
+	platforms.GET("", h.platformsPageOrList)
+	platforms.POST("", h.createPlatform)
+	platforms.DELETE("/:platformID", h.deletePlatform)
+	platforms.PUT("/:platformID/token", h.regeneratePlatformToken)
 }
 
 func serverErrorLogger(c *gin.Context) {
@@ -70,18 +70,6 @@ func cors(c *gin.Context) {
 
 	if c.Request.Method == http.MethodOptions {
 		c.AbortWithStatus(http.StatusNoContent)
-		return
-	}
-
-	c.Next()
-}
-
-func (h *Handler) adminAuth(c *gin.Context) {
-	username, password, ok := c.Request.BasicAuth()
-	valid := ok && username == "admin" && subtle.ConstantTimeCompare([]byte(password), []byte(h.adminPassword)) == 1
-	if !valid {
-		c.Header("WWW-Authenticate", `Basic realm="admin"`)
-		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 

@@ -19,5 +19,6 @@ type Repository interface {
 	GetSummary(categoryID, offset, limit int, maxAge *int) ([]domain.ItemSummary, error)
 	GetPlatforms() ([]domain.Platform, error)
 	CreatePlatform(name string) (domain.Platform, error)
+	DeletePlatform(platformID int) error
 	RegeneratePlatformToken(platformID int) (string, error)
 }

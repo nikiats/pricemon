@@ -19,6 +19,7 @@ var (
 	ErrInvalidPlatformID     = errors.New("invalid platform ID")
 	ErrInvalidPlatformName   = errors.New("invalid platform name")
 	ErrPlatformAlreadyExists = errors.New("platform already exists")
+	ErrPlatformNotFound      = errors.New("platform not found")
 )
 
 type Service struct {
@@ -133,6 +134,19 @@ func (s *Service) CreatePlatform(name string) (domain.Platform, error) {
 	}
 
 	return platform, err
+}
+
+func (s *Service) DeletePlatform(platformID int) error {
+	if platformID < 1 {
+		return ErrInvalidPlatformID
+	}
+
+	err := s.repo.DeletePlatform(platformID)
+	if errors.Is(err, repository.ErrPlatformNotFound) {
+		return ErrPlatformNotFound
+	}
+
+	return err
 }
 
 func (s *Service) RegeneratePlatformToken(platformID int) (string, error) {
