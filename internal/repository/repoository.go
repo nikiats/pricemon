@@ -4,14 +4,17 @@ import (
 	"errors"
 	"time"
 
+	"github.com/shopspring/decimal"
+
 	"gopricemon/internal/domain"
 )
 
 var (
-	ErrPlatformAlreadyExists = errors.New("platform already exists")
-	ErrPlatformNotFound      = errors.New("platform not found")
-	ErrExecutorAlreadyExists = errors.New("executor already exists")
-	ErrExecutorNotFound      = errors.New("executor not found")
+	ErrPlatformAlreadyExists  = errors.New("platform already exists")
+	ErrPlatformNotFound       = errors.New("platform not found")
+	ErrExecutorAlreadyExists  = errors.New("executor already exists")
+	ErrExecutorNotFound       = errors.New("executor not found")
+	ErrTaskReferencesNotFound = errors.New("task references not found")
 )
 
 type Repository interface {
@@ -34,4 +37,8 @@ type Repository interface {
 	ClaimTask(platformID, executorID, leaseSeconds int) (domain.Task, bool, error)
 	ExtendTaskLease(taskID, executorID int, leaseToken string, leaseSeconds int) (time.Time, bool, error)
 	ReportTaskResult(taskID, executorID int, leaseToken string, status domain.TaskStatus, errorText *string) (bool, error)
+	GetTasks() ([]domain.TaskInfo, error)
+	CreateTask(categoryName, itemName, platformName, actionType string, price decimal.Decimal) (domain.TaskInfo, error)
+	CreateTaskByCategoryID(categoryID int, itemName, platformName, actionType string, price decimal.Decimal) (domain.TaskInfo, error)
+	DeleteTask(taskID int) (bool, error)
 }

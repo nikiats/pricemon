@@ -28,6 +28,17 @@ func (h *Handler) executorsPageOrList(c *gin.Context) {
 	h.getExecutors(c)
 }
 
+func (h *Handler) tasksPageOrList(c *gin.Context) {
+	c.Header("Vary", "Accept")
+
+	if strings.Contains(c.GetHeader("Accept"), "text/html") {
+		c.File("public/tasks.html")
+		return
+	}
+
+	h.getTasks(c)
+}
+
 func (h *Handler) indexPage(c *gin.Context) {
 	c.File("public/index.html")
 }

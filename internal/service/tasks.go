@@ -5,17 +5,26 @@ import (
 	"strings"
 	"time"
 
+	"github.com/shopspring/decimal"
+
 	"gopricemon/internal/domain"
 	"gopricemon/internal/repository"
 )
 
 var (
-	ErrInvalidExecutorToken = errors.New("invalid executor token")
-	ErrInvalidTaskID        = errors.New("invalid task ID")
-	ErrInvalidLeaseToken    = errors.New("invalid lease token")
-	ErrInvalidLeaseDuration = errors.New("invalid lease duration")
-	ErrInvalidTaskResult    = errors.New("invalid task result")
-	ErrTaskLeaseExpired     = errors.New("task lease expired or belongs to another executor")
+	ErrInvalidExecutorToken   = errors.New("invalid executor token")
+	ErrInvalidTaskID          = errors.New("invalid task ID")
+	ErrInvalidLeaseToken      = errors.New("invalid lease token")
+	ErrInvalidLeaseDuration   = errors.New("invalid lease duration")
+	ErrInvalidTaskResult      = errors.New("invalid task result")
+	ErrTaskLeaseExpired       = errors.New("task lease expired or belongs to another executor")
+	ErrTaskReferencesNotFound = errors.New("task references not found")
+	ErrTaskNotCancellable     = errors.New("task is already in progress or does not exist")
+	ErrInvalidCategoryName    = errors.New("category name is required")
+	ErrInvalidItemName        = errors.New("item name is required")
+	ErrInvalidTaskPlatform    = errors.New("platform name is required")
+	ErrInvalidTaskAction      = errors.New("action must be buy or sell")
+	ErrInvalidTaskPrice       = errors.New("price must be a positive number")
 )
 
 func (s *Service) ClaimTask(platformID int, executorToken string) (domain.Task, bool, error) {
@@ -29,6 +38,86 @@ func (s *Service) ClaimTask(platformID int, executorToken string) (domain.Task, 
 	}
 
 	return s.repo.ClaimTask(platformID, executor.ID, s.taskLeaseMaxSeconds)
+}
+
+func (s *Service) GetTasks() ([]domain.TaskInfo, error) {
+	return s.repo.GetTasks()
+}
+
+func (s *Service) CreateTask(categoryName, itemName, platformName, actionType, priceRaw string) (domain.TaskInfo, error) {
+	categoryName = strings.TrimSpace(categoryName)
+	itemName = strings.TrimSpace(itemName)
+	platformName = strings.TrimSpace(platformName)
+	if categoryName == "" {
+		return domain.TaskInfo{}, ErrInvalidCategoryName
+	}
+	if itemName == "" {
+		return domain.TaskInfo{}, ErrInvalidItemName
+	}
+	if platformName == "" {
+		return domain.TaskInfo{}, ErrInvalidTaskPlatform
+	}
+	if actionType != "buy" && actionType != "sell" {
+		return domain.TaskInfo{}, ErrInvalidTaskAction
+	}
+
+	price, err := decimal.NewFromString(strings.TrimSpace(priceRaw))
+	if err != nil || price.LessThanOrEqual(decimal.Zero) {
+		return domain.TaskInfo{}, ErrInvalidTaskPrice
+	}
+
+	task, err := s.repo.CreateTask(categoryName, itemName, platformName, actionType, price)
+	if errors.Is(err, repository.ErrTaskReferencesNotFound) {
+		return domain.TaskInfo{}, ErrTaskReferencesNotFound
+	}
+
+	return task, err
+}
+
+func (s *Service) CreateTaskByCategoryID(categoryID int, itemName, platformName, actionType, priceRaw string) (domain.TaskInfo, error) {
+	if categoryID < 1 {
+		return domain.TaskInfo{}, ErrInvalidCategoryID
+	}
+
+	itemName = strings.TrimSpace(itemName)
+	platformName = strings.TrimSpace(platformName)
+	if itemName == "" {
+		return domain.TaskInfo{}, ErrInvalidItemName
+	}
+	if platformName == "" {
+		return domain.TaskInfo{}, ErrInvalidTaskPlatform
+	}
+	if actionType != "buy" && actionType != "sell" {
+		return domain.TaskInfo{}, ErrInvalidTaskAction
+	}
+
+	price, err := decimal.NewFromString(strings.TrimSpace(priceRaw))
+	if err != nil || price.LessThanOrEqual(decimal.Zero) {
+		return domain.TaskInfo{}, ErrInvalidTaskPrice
+	}
+
+	task, err := s.repo.CreateTaskByCategoryID(categoryID, itemName, platformName, actionType, price)
+	if errors.Is(err, repository.ErrTaskReferencesNotFound) {
+		return domain.TaskInfo{}, ErrTaskReferencesNotFound
+	}
+
+	return task, err
+}
+
+func (s *Service) DeleteTask(taskID int) error {
+	if taskID < 1 {
+		return ErrInvalidTaskID
+	}
+
+	deleted, err := s.repo.DeleteTask(taskID)
+	if err != nil {
+		return err
+	}
+	if !deleted {
+		return ErrTaskNotCancellable
+	}
+
+	return nil
 }
 
 func (s *Service) ExtendTaskLease(taskID int, leaseToken string, leaseSeconds int, executorToken string) (time.Time, error) {

@@ -23,3 +23,16 @@ type Task struct {
 	LeaseToken string
 	LeaseUntil time.Time
 }
+
+type TaskInfo struct {
+	ID           int
+	ItemName     *string
+	CategoryName *string
+	PlatformName string
+	ExecutorName *string
+	ActionType   string
+	Price        decimal.Decimal
+	Status       TaskStatus
+	Error        *string
+	LeaseUntil   *time.Time
+}

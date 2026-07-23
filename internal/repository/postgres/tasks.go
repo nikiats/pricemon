@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/shopspring/decimal"
 
 	"gopricemon/internal/domain"
 	"gopricemon/internal/repository"
@@ -105,6 +106,150 @@ func (r *Repository) ReportTaskResult(taskID, executorID int, leaseToken string,
 	`
 
 	result, err := r.pool.Exec(context.Background(), query, taskID, executorID, leaseToken, status, errorText)
+	if err != nil {
+		return false, err
+	}
+
+	return result.RowsAffected() > 0, nil
+}
+
+func (r *Repository) GetTasks() ([]domain.TaskInfo, error) {
+	const query = `
+		SELECT
+			t.id,
+			i.name,
+			c.name,
+			p.name,
+			e.name,
+			t.action_type,
+			t.price,
+			t.status,
+			t.error,
+			t.lease_until
+		FROM tasks AS t
+		LEFT JOIN items AS i ON i.id = t.item_id
+		LEFT JOIN categories AS c ON c.id = i.category_id
+		JOIN platforms AS p ON p.id = t.platform_id
+		LEFT JOIN executors AS e ON e.id = t.executor_id
+		ORDER BY t.id DESC
+	`
+
+	rows, err := r.pool.Query(context.Background(), query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tasks []domain.TaskInfo
+	for rows.Next() {
+		var task domain.TaskInfo
+		if err = rows.Scan(
+			&task.ID,
+			&task.ItemName,
+			&task.CategoryName,
+			&task.PlatformName,
+			&task.ExecutorName,
+			&task.ActionType,
+			&task.Price,
+			&task.Status,
+			&task.Error,
+			&task.LeaseUntil,
+		); err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, task)
+	}
+
+	return tasks, rows.Err()
+}
+
+func (r *Repository) CreateTask(categoryName, itemName, platformName, actionType string, price decimal.Decimal) (domain.TaskInfo, error) {
+	const query = `
+		INSERT INTO tasks (item_id, platform_id, action_type, price, status)
+		SELECT i.id, p.id, $4, $5, 'not started'
+		FROM items AS i
+		JOIN categories AS c ON c.id = i.category_id
+		JOIN platforms AS p ON p.name = $3
+		WHERE c.name = $1
+			AND i.name = $2
+		RETURNING
+			id,
+			(SELECT name FROM items WHERE id = item_id),
+			$1,
+			$3,
+			NULL::TEXT,
+			action_type,
+			price,
+			status,
+			error,
+			lease_until
+	`
+
+	var task domain.TaskInfo
+	err := r.pool.QueryRow(context.Background(), query, categoryName, itemName, platformName, actionType, price).Scan(
+		&task.ID,
+		&task.ItemName,
+		&task.CategoryName,
+		&task.PlatformName,
+		&task.ExecutorName,
+		&task.ActionType,
+		&task.Price,
+		&task.Status,
+		&task.Error,
+		&task.LeaseUntil,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.TaskInfo{}, repository.ErrTaskReferencesNotFound
+	}
+
+	return task, err
+}
+
+func (r *Repository) CreateTaskByCategoryID(categoryID int, itemName, platformName, actionType string, price decimal.Decimal) (domain.TaskInfo, error) {
+	const query = `
+		INSERT INTO tasks (item_id, platform_id, action_type, price, status)
+		SELECT i.id, p.id, $4, $5, 'not started'
+		FROM items AS i
+		JOIN platforms AS p ON p.name = $3
+		WHERE i.category_id = $1
+			AND i.name = $2
+		RETURNING
+			id,
+			(SELECT name FROM items WHERE id = item_id),
+			(SELECT name FROM categories WHERE id = $1),
+			$3,
+			NULL::TEXT,
+			action_type,
+			price,
+			status,
+			error,
+			lease_until
+	`
+
+	var task domain.TaskInfo
+	err := r.pool.QueryRow(context.Background(), query, categoryID, itemName, platformName, actionType, price).Scan(
+		&task.ID,
+		&task.ItemName,
+		&task.CategoryName,
+		&task.PlatformName,
+		&task.ExecutorName,
+		&task.ActionType,
+		&task.Price,
+		&task.Status,
+		&task.Error,
+		&task.LeaseUntil,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.TaskInfo{}, repository.ErrTaskReferencesNotFound
+	}
+
+	return task, err
+}
+
+func (r *Repository) DeleteTask(taskID int) (bool, error) {
+	result, err := r.pool.Exec(
+		context.Background(), `DELETE FROM tasks WHERE id = $1 AND status <> 'in progress'`, taskID,
+	)
 	if err != nil {
 		return false, err
 	}

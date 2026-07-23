@@ -123,6 +123,79 @@ paths:
           $ref: '#/components/responses/Conflict'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /tasks:
+    get:
+      summary: Получить задачи
+      description: Возвращает задачи с названиями предметов, площадок и исполнителей.
+      responses:
+        '200':
+          description: Задачи
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskInfo'
+        '204':
+          description: Задач нет
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      summary: Создать задачу
+      description: Создаёт не начатую задачу по названиям категории, предмета и площадки.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskRequest'
+      responses:
+        '201':
+          description: Задача создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskInfo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /tasks/{taskID}:
+    delete:
+      summary: Отменить задачу
+      description: Удаляет задачу, если она ещё не взята в работу.
+      parameters:
+        - $ref: '#/components/parameters/TaskID'
+      responses:
+        '204':
+          description: Задача отменена
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /tasks/from-summary:
+    post:
+      summary: Создать задачу из сводки
+      description: Создаёт не начатую задачу для выбранных предмета, площадки и цены из сводной таблицы.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskFromSummaryRequest'
+      responses:
+        '201':
+          description: Задача создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskInfo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /tasks/claim:
     post:
       summary: Взять задачу
@@ -568,6 +641,65 @@ components:
           enum: [completed, failed]
         error:
           type: string
+    CreateTaskRequest:
+      type: object
+      required: [categoryName, itemName, platformName, actionType, price]
+      properties:
+        categoryName:
+          type: string
+        itemName:
+          type: string
+        platformName:
+          type: string
+        actionType:
+          type: string
+          enum: [buy, sell]
+        price:
+          type: string
+    CreateTaskFromSummaryRequest:
+      type: object
+      required: [categoryID, itemName, platformName, actionType, price]
+      properties:
+        categoryID:
+          type: integer
+          format: int64
+        itemName:
+          type: string
+        platformName:
+          type: string
+        actionType:
+          type: string
+          enum: [buy, sell]
+        price:
+          type: string
+    TaskInfo:
+      type: object
+      required: [id, platformName, actionType, price, status]
+      properties:
+        id:
+          type: integer
+          format: int64
+        itemName:
+          type: [string, 'null']
+        categoryName:
+          type: [string, 'null']
+        platformName:
+          type: string
+        executorName:
+          type: [string, 'null']
+        actionType:
+          type: string
+          enum: [buy, sell]
+        price:
+          type: string
+        status:
+          type: string
+          enum: [not started, in progress, completed, failed]
+        error:
+          type: [string, 'null']
+        leaseUntil:
+          type: [string, 'null']
+          format: date-time
     Error:
       type: object
       required: [error]

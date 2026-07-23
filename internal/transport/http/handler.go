@@ -27,6 +27,10 @@ type Service interface {
 	ClaimTask(platformID int, executorToken string) (domain.Task, bool, error)
 	ExtendTaskLease(taskID int, leaseToken string, leaseSeconds int, executorToken string) (time.Time, error)
 	ReportTaskResult(taskID int, leaseToken string, status domain.TaskStatus, errorText *string, executorToken string) error
+	GetTasks() ([]domain.TaskInfo, error)
+	CreateTask(categoryName, itemName, platformName, actionType, price string) (domain.TaskInfo, error)
+	CreateTaskByCategoryID(categoryID int, itemName, platformName, actionType, price string) (domain.TaskInfo, error)
+	DeleteTask(taskID int) error
 }
 
 type Handler struct {
@@ -60,9 +64,14 @@ func (h *Handler) Register(router *gin.Engine) {
 	executors.DELETE("/:executorID", h.deleteExecutor)
 	executors.PUT("/:executorID/token", h.regenerateExecutorToken)
 
-	router.POST("/tasks/claim", h.claimTask)
-	router.PUT("/tasks/:taskID/lease", h.extendTaskLease)
-	router.POST("/tasks/:taskID/result", h.reportTaskResult)
+	tasks := router.Group("/tasks")
+	tasks.GET("", h.tasksPageOrList)
+	tasks.POST("", h.createTask)
+	tasks.POST("/from-summary", h.createTaskFromSummary)
+	tasks.DELETE("/:taskID", h.deleteTask)
+	tasks.POST("/claim", h.claimTask)
+	tasks.PUT("/:taskID/lease", h.extendTaskLease)
+	tasks.POST("/:taskID/result", h.reportTaskResult)
 }
 
 func serverErrorLogger(c *gin.Context) {

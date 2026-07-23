@@ -27,6 +27,7 @@
 		.platforms, .prices { white-space: nowrap; }
 		.platforms a { color: inherit; text-decoration-color: #aaa; text-underline-offset: 2px; }
 		.platforms a:hover { text-decoration-color: #161616; }
+		.task-button { margin-left: 5px; padding: 2px 4px; font-size: 11px; }
 		.arrow { color: #999; padding: 0 5px; }
 		.difference { font-weight: 700; white-space: nowrap; }
 		.positive { color: #19723b; }
@@ -104,12 +105,51 @@
 				cell.append(label);
 			}
 		}
-		function platformCell(sellName, sellCount, sellURL, buyName, buyCount, buyURL) {
+		function taskButton(item, platformName, actionType, taskPrice) {
+			if (!platformName || taskPrice == null) return null;
+			const button = document.createElement('button');
+			button.type = 'button';
+			button.className = 'task-button';
+			button.textContent = actionType === 'buy' ? 'Купить' : 'Продать';
+			button.onclick = async () => {
+				let created = false;
+				button.disabled = true;
+				try {
+					const response = await fetch('/tasks/from-summary', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							categoryID: item.categoryID,
+							itemName: item.name,
+							platformName,
+							actionType,
+							price: String(taskPrice),
+						}),
+					});
+					if (!response.ok) {
+						let message = 'Не удалось создать задачу';
+						try { message = (await response.json()).error || message; } catch {}
+						alert(message);
+						return;
+					}
+					button.textContent = 'Создано';
+					created = true;
+				} finally {
+					button.disabled = created;
+				}
+			};
+			return button;
+		}
+		function platformCell(item) {
 			const element = document.createElement('td');
 			element.className = 'platforms';
-			appendPlatform(element, sellName, sellCount, sellURL);
+			appendPlatform(element, item.sellPlatformName, item.sellCount, item.sellUrl);
+			const sellTask = taskButton(item, item.sellPlatformName, 'sell', item.sellPrice);
+			if (sellTask) element.append(sellTask);
 			element.append(' → ');
-			appendPlatform(element, buyName, buyCount, buyURL);
+			appendPlatform(element, item.buyPlatformName, item.buyCount, item.buyUrl);
+			const buyTask = taskButton(item, item.buyPlatformName, 'buy', item.buyPrice);
+			if (buyTask) element.append(buyTask);
 			return element;
 		}
 		function addRows(items) {
@@ -118,7 +158,7 @@
 				const delta = difference(item.sellPrice, item.buyPrice);
 				row.append(
 					cell('', text(item.name)),
-					platformCell(item.sellPlatformName, item.sellCount, item.sellUrl, item.buyPlatformName, item.buyCount, item.buyUrl),
+					platformCell(item),
 					cell('prices', `${price(item.sellPrice)} → ${price(item.buyPrice)}`),
 					cell(`difference ${delta.className}`, delta.value),
 					cell('', dateTime(item.actualAt)),

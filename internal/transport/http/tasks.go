@@ -22,6 +22,163 @@ type taskResponse struct {
 	LeaseUntil time.Time       `json:"leaseUntil"`
 }
 
+type taskInfoResponse struct {
+	ID           int               `json:"id"`
+	ItemName     *string           `json:"itemName"`
+	CategoryName *string           `json:"categoryName"`
+	PlatformName string            `json:"platformName"`
+	ExecutorName *string           `json:"executorName"`
+	ActionType   string            `json:"actionType"`
+	Price        decimal.Decimal   `json:"price"`
+	Status       domain.TaskStatus `json:"status"`
+	Error        *string           `json:"error"`
+	LeaseUntil   *time.Time        `json:"leaseUntil"`
+}
+
+func (h *Handler) getTasks(c *gin.Context) {
+	tasks, err := h.service.GetTasks()
+	if err != nil {
+		_ = c.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+	if len(tasks) == 0 {
+		c.Status(http.StatusNoContent)
+		return
+	}
+
+	response := make([]taskInfoResponse, len(tasks))
+	for i, task := range tasks {
+		response[i] = taskInfoResponse{
+			ID:           task.ID,
+			ItemName:     task.ItemName,
+			CategoryName: task.CategoryName,
+			PlatformName: task.PlatformName,
+			ExecutorName: task.ExecutorName,
+			ActionType:   task.ActionType,
+			Price:        task.Price,
+			Status:       task.Status,
+			Error:        task.Error,
+			LeaseUntil:   task.LeaseUntil,
+		}
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+func (h *Handler) createTask(c *gin.Context) {
+	var request struct {
+		CategoryName string `json:"categoryName"`
+		ItemName     string `json:"itemName"`
+		PlatformName string `json:"platformName"`
+		ActionType   string `json:"actionType"`
+		Price        string `json:"price"`
+	}
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	task, err := h.service.CreateTask(request.CategoryName, request.ItemName, request.PlatformName, request.ActionType, request.Price)
+	if err != nil {
+		if errors.Is(err, service.ErrInvalidCategoryName) ||
+			errors.Is(err, service.ErrInvalidItemName) ||
+			errors.Is(err, service.ErrInvalidTaskPlatform) ||
+			errors.Is(err, service.ErrInvalidTaskAction) ||
+			errors.Is(err, service.ErrInvalidTaskPrice) ||
+			errors.Is(err, service.ErrTaskReferencesNotFound) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		_ = c.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, taskInfoResponse{
+		ID:           task.ID,
+		ItemName:     task.ItemName,
+		CategoryName: task.CategoryName,
+		PlatformName: task.PlatformName,
+		ExecutorName: task.ExecutorName,
+		ActionType:   task.ActionType,
+		Price:        task.Price,
+		Status:       task.Status,
+		Error:        task.Error,
+		LeaseUntil:   task.LeaseUntil,
+	})
+}
+
+func (h *Handler) createTaskFromSummary(c *gin.Context) {
+	var request struct {
+		CategoryID   int    `json:"categoryID"`
+		ItemName     string `json:"itemName"`
+		PlatformName string `json:"platformName"`
+		ActionType   string `json:"actionType"`
+		Price        string `json:"price"`
+	}
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	task, err := h.service.CreateTaskByCategoryID(request.CategoryID, request.ItemName, request.PlatformName, request.ActionType, request.Price)
+	if err != nil {
+		if errors.Is(err, service.ErrInvalidCategoryID) ||
+			errors.Is(err, service.ErrInvalidItemName) ||
+			errors.Is(err, service.ErrInvalidTaskPlatform) ||
+			errors.Is(err, service.ErrInvalidTaskAction) ||
+			errors.Is(err, service.ErrInvalidTaskPrice) ||
+			errors.Is(err, service.ErrTaskReferencesNotFound) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		_ = c.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, taskInfoResponse{
+		ID:           task.ID,
+		ItemName:     task.ItemName,
+		CategoryName: task.CategoryName,
+		PlatformName: task.PlatformName,
+		ExecutorName: task.ExecutorName,
+		ActionType:   task.ActionType,
+		Price:        task.Price,
+		Status:       task.Status,
+		Error:        task.Error,
+		LeaseUntil:   task.LeaseUntil,
+	})
+}
+
+func (h *Handler) deleteTask(c *gin.Context) {
+	taskID, err := strconv.Atoi(c.Param("taskID"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid task ID"})
+		return
+	}
+
+	if err := h.service.DeleteTask(taskID); err != nil {
+		if errors.Is(err, service.ErrInvalidTaskID) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if errors.Is(err, service.ErrTaskNotCancellable) {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
+
+		_ = c.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
 func (h *Handler) claimTask(c *gin.Context) {
 	token, ok := bearerToken(c.GetHeader("Authorization"))
 	if !ok {
