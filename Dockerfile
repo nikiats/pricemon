@@ -15,6 +15,7 @@ RUN addgroup -S app && adduser -S -G app app
 
 WORKDIR /app
 COPY --from=build /out/server /out/migrate ./
+COPY --from=build /src/public ./public
 
 USER app
 EXPOSE 8082
