@@ -63,6 +63,27 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /offers/bulk:
+    put:
+      summary: Создать или обновить несколько офферов
+      description: Проверяет и сохраняет все офферы одной транзакцией. Все офферы должны принадлежать площадке токена доступа.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkSetOfferRequest'
+      responses:
+        '204':
+          description: Офферы сохранены
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /offers/zero-count:
     put:
       summary: Обнулить количество оффера
@@ -537,6 +558,15 @@ components:
           minimum: 0
         url:
           type: string
+    BulkSetOfferRequest:
+      type: object
+      required: [offers]
+      properties:
+        offers:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/SetOfferRequest'
     SetZeroCountRequest:
       type: object
       required: [categoryID, itemName, platformID]

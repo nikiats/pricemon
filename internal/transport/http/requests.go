@@ -16,6 +16,16 @@ import (
 
 const defaultPageSize = 50
 
+type setOfferRequest struct {
+	CategoryID int              `json:"categoryID"`
+	ItemName   string           `json:"itemName"`
+	PlatformID int              `json:"platformID"`
+	Side       domain.OfferSide `json:"side"`
+	Price      string           `json:"price"`
+	Count      int              `json:"count"`
+	URL        *string          `json:"url"`
+}
+
 type itemResponse struct {
 	ID               int              `json:"id"`
 	Name             string           `json:"name"`
@@ -130,36 +140,18 @@ func (h *Handler) setOffer(c *gin.Context) {
 		return
 	}
 
-	var request struct {
-		CategoryID int              `json:"categoryID"`
-		ItemName   string           `json:"itemName"`
-		PlatformID int              `json:"platformID"`
-		Side       domain.OfferSide `json:"side"`
-		Price      string           `json:"price"`
-		Count      int              `json:"count"`
-		URL        *string          `json:"url"`
-	}
+	var request setOfferRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
 
-	price, err := decimal.NewFromString(request.Price)
+	offer, err := offerFromRequest(request, token)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid price"})
 		return
 	}
 
-	offer := domain.Offer{
-		CategoryID:    request.CategoryID,
-		ItemName:      request.ItemName,
-		PlatformID:    request.PlatformID,
-		PlatformToken: token,
-		Side:          request.Side,
-		Price:         price,
-		Count:         request.Count,
-		URL:           request.URL,
-	}
 	if err := h.service.SetOffer(offer); err != nil {
 		if errors.Is(err, service.ErrInvalidPlatformToken) {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
@@ -176,6 +168,67 @@ func (h *Handler) setOffer(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+func (h *Handler) setOffers(c *gin.Context) {
+	token, ok := bearerToken(c.GetHeader("Authorization"))
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization header"})
+		return
+	}
+
+	var request struct {
+		Offers []setOfferRequest `json:"offers"`
+	}
+	if err := c.ShouldBindJSON(&request); err != nil || len(request.Offers) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	offers := make([]domain.Offer, len(request.Offers))
+	for i, requestOffer := range request.Offers {
+		offer, err := offerFromRequest(requestOffer, token)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid price"})
+			return
+		}
+		offers[i] = offer
+	}
+
+	if err := h.service.SetOffers(offers); err != nil {
+		if errors.Is(err, service.ErrInvalidPlatformToken) {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
+		}
+		if errors.Is(err, service.ErrInvalidOffer) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		_ = c.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+func offerFromRequest(request setOfferRequest, token string) (domain.Offer, error) {
+	price, err := decimal.NewFromString(request.Price)
+	if err != nil {
+		return domain.Offer{}, err
+	}
+
+	return domain.Offer{
+		CategoryID:    request.CategoryID,
+		ItemName:      request.ItemName,
+		PlatformID:    request.PlatformID,
+		PlatformToken: token,
+		Side:          request.Side,
+		Price:         price,
+		Count:         request.Count,
+		URL:           request.URL,
+	}, nil
 }
 
 func (h *Handler) setZeroCount(c *gin.Context) {

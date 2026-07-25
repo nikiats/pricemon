@@ -11,19 +11,39 @@ import (
 	"gopricemon/internal/repository"
 )
 
-func (r *Repository) SetOffer(itemID int, offer domain.Offer) error {
-	const query = `
+func (r *Repository) SetOffers(offers []domain.Offer) error {
+	ctx := context.Background()
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	const getOrCreateItemQuery = `
+		INSERT INTO items (category_id, name)
+		VALUES ($1, $2)
+		ON CONFLICT (category_id, name) DO UPDATE
+		SET name = EXCLUDED.name
+		RETURNING id
+	`
+	const setOfferQuery = `
 		INSERT INTO offers (item_id, platform_id, side, price, count, url)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (item_id, platform_id, side) DO UPDATE
 		SET price = EXCLUDED.price, count = EXCLUDED.count, url = EXCLUDED.url, updated_at = NOW()
 	`
 
-	_, err := r.pool.Exec(
-		context.Background(), query,
-		itemID, offer.PlatformID, offer.Side, offer.Price, offer.Count, offer.URL,
-	)
-	return err
+	for _, offer := range offers {
+		var itemID int
+		if err = tx.QueryRow(ctx, getOrCreateItemQuery, offer.CategoryID, offer.ItemName).Scan(&itemID); err != nil {
+			return err
+		}
+		if _, err = tx.Exec(ctx, setOfferQuery, itemID, offer.PlatformID, offer.Side, offer.Price, offer.Count, offer.URL); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit(ctx)
 }
 
 func (r *Repository) SetZeroCount(itemID, platformID int) (bool, error) {

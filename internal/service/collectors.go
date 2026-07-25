@@ -17,35 +17,43 @@ var (
 )
 
 func (s *Service) SetOffer(offer domain.Offer) error {
-	offer.ItemName = strings.TrimSpace(offer.ItemName)
-	offer.PlatformToken = strings.TrimSpace(offer.PlatformToken)
-	if offer.CategoryID < 1 ||
-		offer.ItemName == "" ||
-		offer.PlatformID < 1 ||
-		offer.PlatformToken == "" ||
-		offer.Count < 0 ||
-		offer.Price.LessThanOrEqual(decimal.Zero) ||
-		(offer.Side != domain.SideSell && offer.Side != domain.SideBuy) {
-		return ErrInvalidOffer
+	return s.SetOffers([]domain.Offer{offer})
+}
+
+func (s *Service) SetOffers(offers []domain.Offer) error {
+	platforms := make(map[int]domain.Platform)
+	for i := range offers {
+		offer := &offers[i]
+		offer.ItemName = strings.TrimSpace(offer.ItemName)
+		offer.PlatformToken = strings.TrimSpace(offer.PlatformToken)
+		if offer.CategoryID < 1 ||
+			offer.ItemName == "" ||
+			offer.PlatformID < 1 ||
+			offer.PlatformToken == "" ||
+			offer.Count < 0 ||
+			offer.Price.LessThanOrEqual(decimal.Zero) ||
+			(offer.Side != domain.SideSell && offer.Side != domain.SideBuy) {
+			return ErrInvalidOffer
+		}
+
+		platform, ok := platforms[offer.PlatformID]
+		if !ok {
+			var err error
+			platform, err = s.repo.GetPlatform(offer.PlatformID)
+			if errors.Is(err, repository.ErrPlatformNotFound) {
+				return ErrInvalidPlatformToken
+			}
+			if err != nil {
+				return err
+			}
+			platforms[offer.PlatformID] = platform
+		}
+		if subtle.ConstantTimeCompare([]byte(offer.PlatformToken), []byte(platform.Token)) != 1 {
+			return ErrInvalidPlatformToken
+		}
 	}
 
-	platform, err := s.repo.GetPlatform(offer.PlatformID)
-	if errors.Is(err, repository.ErrPlatformNotFound) {
-		return ErrInvalidPlatformToken
-	}
-	if err != nil {
-		return err
-	}
-	if subtle.ConstantTimeCompare([]byte(offer.PlatformToken), []byte(platform.Token)) != 1 {
-		return ErrInvalidPlatformToken
-	}
-
-	itemID, err := s.repo.GetOrCreateItem(offer.CategoryID, offer.ItemName)
-	if err != nil {
-		return err
-	}
-
-	return s.repo.SetOffer(itemID, offer)
+	return s.repo.SetOffers(offers)
 }
 
 func (s *Service) SetZeroCount(categoryID int, itemName string, platformID int, platformToken string) (bool, error) {
