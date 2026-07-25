@@ -12,6 +12,7 @@ import (
 
 type Service interface {
 	GetSummary(categoryID, offset, limit int, maxAge *int) (domain.SummaryPage, error)
+	GetInventory() ([]domain.InventorySummary, error)
 	SetOffer(offer domain.Offer) error
 	SetZeroCount(categoryID int, itemName string, platformID int, platformToken string) (bool, error)
 	ReplaceInventory(items []domain.InventoryItem) error
@@ -49,6 +50,7 @@ func (h *Handler) Register(router *gin.Engine) {
 	router.GET("/summary", h.summaryPage)
 	router.PUT("/offers", h.setOffer)
 	router.PUT("/offers/zero-count", h.setZeroCount)
+	router.GET("/inventory", h.inventoryPageOrList)
 	router.PUT("/inventory", h.replaceInventory)
 	router.PATCH("/inventory", h.changeInventory)
 

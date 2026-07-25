@@ -58,6 +58,10 @@ func (s *Service) GetSummary(categoryID, offset, limit int, maxAge *int) (domain
 	return page, nil
 }
 
+func (s *Service) GetInventory() ([]domain.InventorySummary, error) {
+	return s.repo.GetInventory()
+}
+
 func (s *Service) GetPlatforms() ([]domain.Platform, error) {
 	return s.repo.GetPlatforms()
 }

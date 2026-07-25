@@ -39,6 +39,17 @@ func (h *Handler) tasksPageOrList(c *gin.Context) {
 	h.getTasks(c)
 }
 
+func (h *Handler) inventoryPageOrList(c *gin.Context) {
+	c.Header("Vary", "Accept")
+
+	if strings.Contains(c.GetHeader("Accept"), "text/html") {
+		c.File("public/inventory.html")
+		return
+	}
+
+	h.getInventory(c)
+}
+
 func (h *Handler) indexPage(c *gin.Context) {
 	c.File("public/index.html")
 }

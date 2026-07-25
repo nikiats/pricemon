@@ -177,6 +177,66 @@ func (r *Repository) ChangeInventory(items []domain.InventoryDelta) (bool, error
 	return true, tx.Commit(ctx)
 }
 
+func (r *Repository) GetInventory() ([]domain.InventorySummary, error) {
+	const query = `
+		SELECT
+			i.id, i.name, i.category_id, inventory.quantity,
+			sell.price, sell_platform.name, sell.url,
+			buy.price, buy_platform.name, buy.url
+		FROM inventory
+		JOIN items AS i ON i.id = inventory.item_id
+		LEFT JOIN LATERAL (
+			SELECT offer.price, offer.platform_id, offer.url
+			FROM offers AS offer
+			WHERE offer.item_id = i.id
+				AND offer.side = 'S'
+				AND offer.count >= 1
+			ORDER BY offer.price, offer.id
+			LIMIT 1
+		) AS sell ON TRUE
+		LEFT JOIN platforms AS sell_platform ON sell_platform.id = sell.platform_id
+		LEFT JOIN LATERAL (
+			SELECT offer.price, offer.platform_id, offer.url
+			FROM offers AS offer
+			WHERE offer.item_id = i.id
+				AND offer.side = 'B'
+				AND offer.count >= 1
+			ORDER BY offer.price DESC, offer.id
+			LIMIT 1
+		) AS buy ON TRUE
+		LEFT JOIN platforms AS buy_platform ON buy_platform.id = buy.platform_id
+		ORDER BY i.category_id, i.name, i.id
+	`
+
+	rows, err := r.pool.Query(context.Background(), query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []domain.InventorySummary
+	for rows.Next() {
+		var item domain.InventorySummary
+		if err = rows.Scan(
+			&item.ID,
+			&item.Name,
+			&item.CategoryID,
+			&item.Quantity,
+			&item.SellPrice,
+			&item.SellPlatformName,
+			&item.SellURL,
+			&item.BuyPrice,
+			&item.BuyPlatformName,
+			&item.BuyURL,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+
+	return items, rows.Err()
+}
+
 func (r *Repository) GetSummary(categoryID, offset, limit int, maxAge *int) ([]domain.ItemSummary, error) {
 	const query = `
 		SELECT

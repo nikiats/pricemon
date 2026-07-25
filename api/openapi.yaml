@@ -89,6 +89,20 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
   /inventory:
+    get:
+      summary: Получить инвентарь с лучшими офферами
+      description: Возвращает все позиции инвентаря. Для каждой позиции указываются минимальная доступная цена продажи и максимальная доступная цена покупки вместе с площадками.
+      responses:
+        '200':
+          description: Позиции инвентаря
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InventorySummary'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     put:
       summary: Полностью обновить инвентарь
       description: Атомарно заменяет инвентарь переданным полным списком предметов.
@@ -563,6 +577,35 @@ components:
         quantity:
           type: integer
           minimum: 0
+    InventorySummary:
+      type: object
+      required: [id, name, categoryID, quantity]
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        categoryID:
+          type: integer
+          format: int64
+        quantity:
+          type: integer
+          minimum: 0
+        sellPrice:
+          type: [string, 'null']
+          description: Минимальная доступная цена, по которой предмет можно купить.
+        sellPlatformName:
+          type: [string, 'null']
+        sellUrl:
+          type: [string, 'null']
+        buyPrice:
+          type: [string, 'null']
+          description: Максимальная доступная цена, по которой предмет можно продать.
+        buyPlatformName:
+          type: [string, 'null']
+        buyUrl:
+          type: [string, 'null']
     ChangeInventoryRequest:
       type: object
       required: [items]
