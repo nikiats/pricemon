@@ -28,7 +28,7 @@ type Service interface {
 	RegenerateExecutorToken(executorID int) (string, error)
 	ClaimTask(platformID int, executorToken string) (domain.Task, bool, error)
 	ExtendTaskLease(taskID int, leaseToken string, leaseSeconds int, executorToken string) (time.Time, error)
-	ReportTaskResult(taskID int, leaseToken string, status domain.TaskStatus, errorText *string, executorToken string) error
+	ReportTaskResult(taskID int, leaseToken string, status domain.TaskStatus, errorText *string, executorToken string) (domain.TaskStatus, error)
 	GetTasks() ([]domain.TaskInfo, error)
 	CreateTask(categoryName, itemName, platformName, actionType, price string) (domain.TaskInfo, error)
 	CreateTaskByCategoryID(categoryID int, itemName, platformName, actionType, price string) (domain.TaskInfo, error)

@@ -18,6 +18,12 @@ var (
 	ErrInvalidLeaseDuration   = errors.New("invalid lease duration")
 	ErrInvalidTaskResult      = errors.New("invalid task result")
 	ErrTaskLeaseExpired       = errors.New("task lease expired or belongs to another executor")
+	ErrTaskResultReported     = errors.New("task result already reported")
+	ErrTaskBelongsToExecutor  = errors.New("task belongs to another executor")
+	ErrTaskResultLeaseExpired = errors.New("task lease expired")
+	ErrTaskLeaseInactive      = errors.New("task lease is no longer active")
+	ErrTaskNotInProgress      = errors.New("task is not in progress")
+	ErrTaskNotFound           = errors.New("task not found")
 	ErrTaskReferencesNotFound = errors.New("task references not found")
 	ErrTaskNotCancellable     = errors.New("task is already in progress or does not exist")
 	ErrInvalidCategoryName    = errors.New("category name is required")
@@ -147,12 +153,12 @@ func (s *Service) ExtendTaskLease(taskID int, leaseToken string, leaseSeconds in
 	return leaseUntil, nil
 }
 
-func (s *Service) ReportTaskResult(taskID int, leaseToken string, status domain.TaskStatus, errorText *string, executorToken string) error {
+func (s *Service) ReportTaskResult(taskID int, leaseToken string, status domain.TaskStatus, errorText *string, executorToken string) (domain.TaskStatus, error) {
 	if taskID < 1 {
-		return ErrInvalidTaskID
+		return "", ErrInvalidTaskID
 	}
 	if strings.TrimSpace(leaseToken) == "" {
-		return ErrInvalidLeaseToken
+		return "", ErrInvalidLeaseToken
 	}
 
 	if errorText != nil {
@@ -160,29 +166,47 @@ func (s *Service) ReportTaskResult(taskID int, leaseToken string, status domain.
 		errorText = &trimmed
 	}
 	if status == domain.TaskStatusFailed && (errorText == nil || *errorText == "") {
-		return ErrInvalidTaskResult
+		return "", ErrInvalidTaskResult
 	}
 	if status == domain.TaskStatusCompleted && errorText != nil {
-		return ErrInvalidTaskResult
+		return "", ErrInvalidTaskResult
 	}
 	if status != domain.TaskStatusCompleted && status != domain.TaskStatusFailed {
-		return ErrInvalidTaskResult
+		return "", ErrInvalidTaskResult
 	}
 
 	executor, err := s.executorByToken(executorToken)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	reported, err := s.repo.ReportTaskResult(taskID, executor.ID, leaseToken, status, errorText)
+	task, reported, err := s.repo.ReportTaskResult(taskID, executor.ID, leaseToken, status, errorText)
 	if err != nil {
-		return err
+		return "", err
 	}
-	if !reported {
-		return ErrTaskLeaseExpired
+	if reported {
+		return "", nil
+	}
+	if task == nil {
+		return "", ErrTaskNotFound
+	}
+	if task.Status == domain.TaskStatusCompleted || task.Status == domain.TaskStatusFailed {
+		return task.Status, ErrTaskResultReported
+	}
+	if task.Status != domain.TaskStatusInProgress {
+		return "", ErrTaskNotInProgress
+	}
+	if task.ExecutorID == nil || *task.ExecutorID != executor.ID {
+		return "", ErrTaskBelongsToExecutor
+	}
+	if task.LeaseExpired {
+		return "", ErrTaskResultLeaseExpired
+	}
+	if task.LeaseToken == nil || *task.LeaseToken != leaseToken {
+		return "", ErrTaskLeaseInactive
 	}
 
-	return nil
+	return "", ErrTaskNotInProgress
 }
 
 func (s *Service) executorByToken(token string) (domain.Executor, error) {

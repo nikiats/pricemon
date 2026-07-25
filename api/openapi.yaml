@@ -309,7 +309,11 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
         '409':
-          $ref: '#/components/responses/Conflict'
+          description: Задача уже завершена, принадлежит другому исполнителю или её лизинг истёк.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResultConflict'
         '500':
           $ref: '#/components/responses/InternalServerError'
   /executors:
@@ -714,6 +718,24 @@ components:
           enum: [completed, failed]
         error:
           type: string
+    TaskResultConflict:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          enum:
+            - task is already completed
+            - task result already reported
+            - task belongs to another executor
+            - task lease expired
+            - task lease is no longer active
+            - task is not in progress
+            - task not found
+        status:
+          type: string
+          enum: [completed, failed]
+          description: Текущий статус задачи. Передаётся, если результат задачи уже был сохранён.
     CreateTaskRequest:
       type: object
       required: [categoryName, itemName, platformName, actionType, price]

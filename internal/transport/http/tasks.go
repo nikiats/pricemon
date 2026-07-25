@@ -268,12 +268,34 @@ func (h *Handler) reportTaskResult(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.ReportTaskResult(taskID, request.LeaseToken, request.Status, request.Error, token); err != nil {
-		handleTaskError(c, err)
+	reportedStatus, err := h.service.ReportTaskResult(taskID, request.LeaseToken, request.Status, request.Error, token)
+	if err != nil {
+		handleTaskResultError(c, reportedStatus, err)
 		return
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+func handleTaskResultError(c *gin.Context, status domain.TaskStatus, err error) {
+	if errors.Is(err, service.ErrTaskResultReported) {
+		message := err.Error()
+		if status == domain.TaskStatusCompleted {
+			message = "task is already completed"
+		}
+		c.JSON(http.StatusConflict, gin.H{"error": message, "status": status})
+		return
+	}
+	if errors.Is(err, service.ErrTaskBelongsToExecutor) ||
+		errors.Is(err, service.ErrTaskResultLeaseExpired) ||
+		errors.Is(err, service.ErrTaskLeaseInactive) ||
+		errors.Is(err, service.ErrTaskNotInProgress) ||
+		errors.Is(err, service.ErrTaskNotFound) {
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		return
+	}
+
+	handleTaskError(c, err)
 }
 
 func handleTaskError(c *gin.Context, err error) {

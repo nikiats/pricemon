@@ -24,6 +24,13 @@ type Task struct {
 	LeaseUntil time.Time
 }
 
+type TaskReportState struct {
+	Status       TaskStatus
+	ExecutorID   *int
+	LeaseToken   *string
+	LeaseExpired bool
+}
+
 type TaskInfo struct {
 	ID           int
 	ItemName     *string

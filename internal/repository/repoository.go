@@ -37,7 +37,7 @@ type Repository interface {
 	GetExecutorByToken(token string) (domain.Executor, error)
 	ClaimTask(platformID, executorID, leaseSeconds int) (domain.Task, bool, error)
 	ExtendTaskLease(taskID, executorID int, leaseToken string, leaseSeconds int) (time.Time, bool, error)
-	ReportTaskResult(taskID, executorID int, leaseToken string, status domain.TaskStatus, errorText *string) (bool, error)
+	ReportTaskResult(taskID, executorID int, leaseToken string, status domain.TaskStatus, errorText *string) (*domain.TaskReportState, bool, error)
 	GetTasks() ([]domain.TaskInfo, error)
 	CreateTask(categoryName, itemName, platformName, actionType string, price decimal.Decimal) (domain.TaskInfo, error)
 	CreateTaskByCategoryID(categoryID int, itemName, platformName, actionType string, price decimal.Decimal) (domain.TaskInfo, error)

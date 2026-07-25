@@ -90,8 +90,8 @@ func (r *Repository) ExtendTaskLease(taskID, executorID int, leaseToken string, 
 	return leaseUntil, true, err
 }
 
-func (r *Repository) ReportTaskResult(taskID, executorID int, leaseToken string, status domain.TaskStatus, errorText *string) (bool, error) {
-	const query = `
+func (r *Repository) ReportTaskResult(taskID, executorID int, leaseToken string, status domain.TaskStatus, errorText *string) (*domain.TaskReportState, bool, error) {
+	const updateQuery = `
 		UPDATE tasks
 		SET
 			status = $4,
@@ -103,14 +103,39 @@ func (r *Repository) ReportTaskResult(taskID, executorID int, leaseToken string,
 			AND lease_token::text = $3
 			AND status = 'in progress'
 			AND lease_until > NOW()
+		RETURNING status
 	`
 
-	result, err := r.pool.Exec(context.Background(), query, taskID, executorID, leaseToken, status, errorText)
-	if err != nil {
-		return false, err
+	var updatedStatus domain.TaskStatus
+	err := r.pool.QueryRow(context.Background(), updateQuery, taskID, executorID, leaseToken, status, errorText).Scan(&updatedStatus)
+	if err == nil {
+		return nil, true, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, false, err
 	}
 
-	return result.RowsAffected() > 0, nil
+	const stateQuery = `
+		SELECT status, executor_id, lease_token::text, COALESCE(lease_until <= NOW(), TRUE)
+		FROM tasks
+		WHERE id = $1
+	`
+
+	var task domain.TaskReportState
+	err = r.pool.QueryRow(context.Background(), stateQuery, taskID).Scan(
+		&task.Status,
+		&task.ExecutorID,
+		&task.LeaseToken,
+		&task.LeaseExpired,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+
+	return &task, false, nil
 }
 
 func (r *Repository) GetTasks() ([]domain.TaskInfo, error) {
