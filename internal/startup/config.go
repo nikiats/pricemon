@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/shopspring/decimal"
 )
 
 const defaultTaskLeaseMaxSeconds = 300
@@ -20,6 +21,8 @@ type Config struct {
 	TaskLeaseMaxSeconds   int
 	DealManagerAPIBaseURL string
 	OutboxPublishInterval time.Duration
+	MinimumProfit         decimal.Decimal
+	MaximumSummaryAgeSecs int
 }
 
 var (
@@ -28,6 +31,8 @@ var (
 	ErrTaskLeaseMax   = errors.New("task lease max seconds incorrect")
 	ErrDealManagerAPI = errors.New("dealmanager api base url not set or incorrect")
 	ErrOutboxInterval = errors.New("outbox publish interval not specified or incorrect")
+	ErrMinimumProfit  = errors.New("minimum profit not specified or incorrect")
+	ErrSummaryAge     = errors.New("maximum summary age not specified or incorrect")
 )
 
 func LoadConfig() (*Config, error) {
@@ -65,6 +70,14 @@ func LoadConfig() (*Config, error) {
 	if err != nil || outboxPublishInterval <= 0 {
 		return nil, ErrOutboxInterval
 	}
+	minimumProfit, err := decimal.NewFromString(os.Getenv("TRADE_MIN_PROFIT"))
+	if err != nil || minimumProfit.IsNegative() {
+		return nil, ErrMinimumProfit
+	}
+	maximumSummaryAgeSecs, err := strconv.Atoi(os.Getenv("TRADE_MAX_SUMMARY_AGE_SECONDS"))
+	if err != nil || maximumSummaryAgeSecs < 1 {
+		return nil, ErrSummaryAge
+	}
 
 	return &Config{
 		DatabaseURL:           databaseURL,
@@ -72,6 +85,8 @@ func LoadConfig() (*Config, error) {
 		TaskLeaseMaxSeconds:   taskLeaseMaxSeconds,
 		DealManagerAPIBaseURL: dealManagerAPIBaseURL,
 		OutboxPublishInterval: outboxPublishInterval,
+		MinimumProfit:         minimumProfit,
+		MaximumSummaryAgeSecs: maximumSummaryAgeSecs,
 	}, nil
 }
 

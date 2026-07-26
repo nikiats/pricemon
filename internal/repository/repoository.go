@@ -45,4 +45,5 @@ type Repository interface {
 	GetOutboxMessages(limit int) ([]domain.OutboxMessage, error)
 	MarkOutboxMessageProcessed(id string) error
 	MarkOutboxMessageFailed(id, message string) error
+	SetTradeSettings(minimumProfit decimal.Decimal, maximumSummaryAgeSecs int) error
 }

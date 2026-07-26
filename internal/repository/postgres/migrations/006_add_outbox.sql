@@ -28,7 +28,8 @@ BEGIN
             'platformSellID', sell.platform_id,
             'platformBuyID', buy.platform_id,
             'sellPrice', sell.price::TEXT,
-            'buyPrice', buy.price::TEXT
+            'buyPrice', buy.price::TEXT,
+            'actualAt', NEW.actual_at
         )
     FROM items AS item
     JOIN offers AS sell ON sell.id = NEW.sell_offer_id

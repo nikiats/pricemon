@@ -3,6 +3,8 @@ package postgres
 import (
 	"context"
 
+	"github.com/shopspring/decimal"
+
 	"gopricemon/internal/domain"
 )
 
@@ -60,5 +62,20 @@ func (r *Repository) MarkOutboxMessageFailed(id, message string) error {
 	`
 
 	_, err := r.pool.Exec(context.Background(), query, id, message)
+	return err
+}
+
+func (r *Repository) SetTradeSettings(minimumProfit decimal.Decimal, maximumSummaryAgeSecs int) error {
+	const query = `
+		INSERT INTO trade_settings (id, minimum_profit, maximum_summary_age_secs)
+		VALUES (TRUE, $1, $2)
+		ON CONFLICT (id) DO UPDATE
+		SET
+			minimum_profit = EXCLUDED.minimum_profit,
+			maximum_summary_age_secs = EXCLUDED.maximum_summary_age_secs,
+			updated_at = NOW()
+	`
+
+	_, err := r.pool.Exec(context.Background(), query, minimumProfit, maximumSummaryAgeSecs)
 	return err
 }

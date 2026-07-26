@@ -4,6 +4,8 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/shopspring/decimal"
+
 	"gopricemon/internal/domain"
 	"gopricemon/internal/repository"
 )
@@ -19,6 +21,8 @@ var (
 	ErrInvalidExecutorName   = errors.New("invalid executor name")
 	ErrExecutorAlreadyExists = errors.New("executor already exists")
 	ErrExecutorNotFound      = errors.New("executor not found")
+	ErrInvalidMinimumProfit  = errors.New("invalid minimum profit")
+	ErrInvalidSummaryAge     = errors.New("invalid maximum summary age")
 )
 
 type Service struct {
@@ -60,6 +64,17 @@ func (s *Service) GetSummary(categoryID, offset, limit int, maxAge *int) (domain
 
 func (s *Service) GetInventory() ([]domain.InventorySummary, error) {
 	return s.repo.GetInventory()
+}
+
+func (s *Service) SetTradeSettings(minimumProfit decimal.Decimal, maximumSummaryAgeSecs int) error {
+	if minimumProfit.IsNegative() {
+		return ErrInvalidMinimumProfit
+	}
+	if maximumSummaryAgeSecs < 1 {
+		return ErrInvalidSummaryAge
+	}
+
+	return s.repo.SetTradeSettings(minimumProfit, maximumSummaryAgeSecs)
 }
 
 func (s *Service) GetPlatforms() ([]domain.Platform, error) {

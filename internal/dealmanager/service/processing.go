@@ -42,19 +42,9 @@ func (s *EventsWorker) ProcessPendingEvents() error {
 			return err
 		}
 
-		ids := make([]string, 0, len(events))
-		for _, event := range events {
-			var summary ItemSummaryEvent
-			if err = json.Unmarshal(event.Payload, &summary); err != nil {
-				if err = s.repository.MarkEventFailed(event.ID, err.Error()); err != nil {
-					return err
-				}
-				continue
-			}
-
-			// TODO: обработать событие.
-			// в результате создается sequential_task или событие отбраковывается.
-			ids = append(ids, event.ID)
+		ids := make([]string, len(events))
+		for i, event := range events {
+			ids[i] = event.ID
 		}
 
 		if err = s.repository.MarkEventsProcessed(ids); err != nil {
@@ -64,15 +54,6 @@ func (s *EventsWorker) ProcessPendingEvents() error {
 			return nil
 		}
 	}
-}
-
-type ItemSummaryEvent struct {
-	CategoryID     int    `json:"categoryID"`
-	ItemID         int    `json:"itemID"`
-	PlatformSellID int    `json:"platformSellID"`
-	PlatformBuyID  int    `json:"platformBuyID"`
-	SellPrice      string `json:"sellPrice"`
-	BuyPrice       string `json:"buyPrice"`
 }
 
 func (s *EventsWorker) RunEventWorker(ctx context.Context, interval time.Duration) {
