@@ -3,8 +3,10 @@ package startup
 import (
 	"errors"
 	"log"
+	"net/url"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -12,15 +14,17 @@ import (
 const defaultTaskLeaseMaxSeconds = 300
 
 type Config struct {
-	DatabaseURL         string
-	HTTPPort            int
-	TaskLeaseMaxSeconds int
+	DatabaseURL           string
+	HTTPPort              int
+	TaskLeaseMaxSeconds   int
+	DealManagerAPIBaseURL string
 }
 
 var (
 	ErrDatabaseConfig = errors.New("database connection url not set or incorrect")
 	ErrPort           = errors.New("http server port not specified or incorrect")
 	ErrTaskLeaseMax   = errors.New("task lease max seconds incorrect")
+	ErrDealManagerAPI = errors.New("dealmanager api base url not set or incorrect")
 )
 
 func LoadConfig() (*Config, error) {
@@ -50,9 +54,24 @@ func LoadConfig() (*Config, error) {
 		}
 	}
 
+	dealManagerAPIBaseURL, err := apiBaseURL(os.Getenv("DEALMANAGER_API_BASE_URL"))
+	if err != nil {
+		return nil, ErrDealManagerAPI
+	}
+
 	return &Config{
-		DatabaseURL:         databaseURL,
-		HTTPPort:            httpPort,
-		TaskLeaseMaxSeconds: taskLeaseMaxSeconds,
+		DatabaseURL:           databaseURL,
+		HTTPPort:              httpPort,
+		TaskLeaseMaxSeconds:   taskLeaseMaxSeconds,
+		DealManagerAPIBaseURL: dealManagerAPIBaseURL,
 	}, nil
+}
+
+func apiBaseURL(value string) (string, error) {
+	parsed, err := url.ParseRequestURI(strings.TrimSpace(value))
+	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return "", ErrDealManagerAPI
+	}
+
+	return strings.TrimRight(parsed.String(), "/"), nil
 }
