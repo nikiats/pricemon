@@ -26,8 +26,7 @@ var (
 	ErrTaskNotFound           = errors.New("task not found")
 	ErrTaskReferencesNotFound = errors.New("task references not found")
 	ErrTaskNotCancellable     = errors.New("task is already in progress or does not exist")
-	ErrInvalidCategoryName    = errors.New("category name is required")
-	ErrInvalidItemName        = errors.New("item name is required")
+	ErrInvalidItemID          = errors.New("invalid item ID")
 	ErrInvalidTaskPlatform    = errors.New("platform name is required")
 	ErrInvalidTaskAction      = errors.New("action must be buy or sell")
 	ErrInvalidTaskPrice       = errors.New("price must be a positive number")
@@ -50,16 +49,12 @@ func (s *Service) GetTasks() ([]domain.TaskInfo, error) {
 	return s.repo.GetTasks()
 }
 
-func (s *Service) CreateTask(categoryName, itemName, platformName, actionType, priceRaw string) (domain.TaskInfo, error) {
-	categoryName = strings.TrimSpace(categoryName)
-	itemName = strings.TrimSpace(itemName)
+func (s *Service) CreateTask(itemID int, platformName, actionType, priceRaw string) (domain.TaskInfo, error) {
+	if itemID < 1 {
+		return domain.TaskInfo{}, ErrInvalidItemID
+	}
+
 	platformName = strings.TrimSpace(platformName)
-	if categoryName == "" {
-		return domain.TaskInfo{}, ErrInvalidCategoryName
-	}
-	if itemName == "" {
-		return domain.TaskInfo{}, ErrInvalidItemName
-	}
 	if platformName == "" {
 		return domain.TaskInfo{}, ErrInvalidTaskPlatform
 	}
@@ -72,37 +67,7 @@ func (s *Service) CreateTask(categoryName, itemName, platformName, actionType, p
 		return domain.TaskInfo{}, ErrInvalidTaskPrice
 	}
 
-	task, err := s.repo.CreateTask(categoryName, itemName, platformName, actionType, price)
-	if errors.Is(err, repository.ErrTaskReferencesNotFound) {
-		return domain.TaskInfo{}, ErrTaskReferencesNotFound
-	}
-
-	return task, err
-}
-
-func (s *Service) CreateTaskByCategoryID(categoryID int, itemName, platformName, actionType, priceRaw string) (domain.TaskInfo, error) {
-	if categoryID < 1 {
-		return domain.TaskInfo{}, ErrInvalidCategoryID
-	}
-
-	itemName = strings.TrimSpace(itemName)
-	platformName = strings.TrimSpace(platformName)
-	if itemName == "" {
-		return domain.TaskInfo{}, ErrInvalidItemName
-	}
-	if platformName == "" {
-		return domain.TaskInfo{}, ErrInvalidTaskPlatform
-	}
-	if actionType != "buy" && actionType != "sell" {
-		return domain.TaskInfo{}, ErrInvalidTaskAction
-	}
-
-	price, err := decimal.NewFromString(strings.TrimSpace(priceRaw))
-	if err != nil || price.LessThanOrEqual(decimal.Zero) {
-		return domain.TaskInfo{}, ErrInvalidTaskPrice
-	}
-
-	task, err := s.repo.CreateTaskByCategoryID(categoryID, itemName, platformName, actionType, price)
+	task, err := s.repo.CreateTask(itemID, platformName, actionType, price)
 	if errors.Is(err, repository.ErrTaskReferencesNotFound) {
 		return domain.TaskInfo{}, ErrTaskReferencesNotFound
 	}

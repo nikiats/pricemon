@@ -39,8 +39,7 @@ type Repository interface {
 	ExtendTaskLease(taskID, executorID int, leaseToken string, leaseSeconds int) (time.Time, bool, error)
 	ReportTaskResult(taskID, executorID int, leaseToken string, status domain.TaskStatus, errorText *string) (*domain.TaskReportState, bool, error)
 	GetTasks() ([]domain.TaskInfo, error)
-	CreateTask(categoryName, itemName, platformName, actionType string, price decimal.Decimal) (domain.TaskInfo, error)
-	CreateTaskByCategoryID(categoryID int, itemName, platformName, actionType string, price decimal.Decimal) (domain.TaskInfo, error)
+	CreateTask(itemID int, platformName, actionType string, price decimal.Decimal) (domain.TaskInfo, error)
 	DeleteTask(taskID int) (bool, error)
 	GetOutboxMessages(limit int) ([]domain.OutboxMessage, error)
 	MarkOutboxMessageProcessed(id string) error

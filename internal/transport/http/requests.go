@@ -28,6 +28,7 @@ type setOfferRequest struct {
 
 type itemResponse struct {
 	ID               int              `json:"id"`
+	ItemID           int              `json:"itemID"`
 	Name             string           `json:"name"`
 	CategoryID       int              `json:"categoryID"`
 	SellPrice        *decimal.Decimal `json:"sellPrice"`
@@ -80,6 +81,7 @@ func (h *Handler) getSummary(c *gin.Context) {
 	for i, item := range page.Items {
 		items[i] = itemResponse{
 			ID:               item.ID,
+			ItemID:           item.ID,
 			Name:             item.Name,
 			CategoryID:       item.CategoryID,
 			SellPrice:        item.SellPrice,

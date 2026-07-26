@@ -68,8 +68,7 @@ func (h *Handler) getTasks(c *gin.Context) {
 
 func (h *Handler) createTask(c *gin.Context) {
 	var request struct {
-		CategoryName string `json:"categoryName"`
-		ItemName     string `json:"itemName"`
+		ItemID       int    `json:"itemID"`
 		PlatformName string `json:"platformName"`
 		ActionType   string `json:"actionType"`
 		Price        string `json:"price"`
@@ -79,54 +78,9 @@ func (h *Handler) createTask(c *gin.Context) {
 		return
 	}
 
-	task, err := h.service.CreateTask(request.CategoryName, request.ItemName, request.PlatformName, request.ActionType, request.Price)
+	task, err := h.service.CreateTask(request.ItemID, request.PlatformName, request.ActionType, request.Price)
 	if err != nil {
-		if errors.Is(err, service.ErrInvalidCategoryName) ||
-			errors.Is(err, service.ErrInvalidItemName) ||
-			errors.Is(err, service.ErrInvalidTaskPlatform) ||
-			errors.Is(err, service.ErrInvalidTaskAction) ||
-			errors.Is(err, service.ErrInvalidTaskPrice) ||
-			errors.Is(err, service.ErrTaskReferencesNotFound) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		_ = c.Error(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
-		return
-	}
-
-	c.JSON(http.StatusCreated, taskInfoResponse{
-		ID:           task.ID,
-		ItemName:     task.ItemName,
-		CategoryName: task.CategoryName,
-		PlatformName: task.PlatformName,
-		ExecutorName: task.ExecutorName,
-		ActionType:   task.ActionType,
-		Price:        task.Price,
-		Status:       task.Status,
-		Error:        task.Error,
-		LeaseUntil:   task.LeaseUntil,
-	})
-}
-
-func (h *Handler) createTaskFromSummary(c *gin.Context) {
-	var request struct {
-		CategoryID   int    `json:"categoryID"`
-		ItemName     string `json:"itemName"`
-		PlatformName string `json:"platformName"`
-		ActionType   string `json:"actionType"`
-		Price        string `json:"price"`
-	}
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
-		return
-	}
-
-	task, err := h.service.CreateTaskByCategoryID(request.CategoryID, request.ItemName, request.PlatformName, request.ActionType, request.Price)
-	if err != nil {
-		if errors.Is(err, service.ErrInvalidCategoryID) ||
-			errors.Is(err, service.ErrInvalidItemName) ||
+		if errors.Is(err, service.ErrInvalidItemID) ||
 			errors.Is(err, service.ErrInvalidTaskPlatform) ||
 			errors.Is(err, service.ErrInvalidTaskAction) ||
 			errors.Is(err, service.ErrInvalidTaskPrice) ||

@@ -188,20 +188,18 @@ func (r *Repository) GetTasks() ([]domain.TaskInfo, error) {
 	return tasks, rows.Err()
 }
 
-func (r *Repository) CreateTask(categoryName, itemName, platformName, actionType string, price decimal.Decimal) (domain.TaskInfo, error) {
+func (r *Repository) CreateTask(itemID int, platformName, actionType string, price decimal.Decimal) (domain.TaskInfo, error) {
 	const query = `
 		INSERT INTO tasks (item_id, platform_id, action_type, price, status)
-		SELECT i.id, p.id, $4, $5, 'not started'
+		SELECT i.id, p.id, $3, $4, 'not started'
 		FROM items AS i
-		JOIN categories AS c ON c.id = i.category_id
-		JOIN platforms AS p ON p.name = $3
-		WHERE c.name = $1
-			AND i.name = $2
+		JOIN platforms AS p ON p.name = $2
+		WHERE i.id = $1
 		RETURNING
 			id,
-			(SELECT name FROM items WHERE id = item_id),
-			$1,
-			$3,
+			(SELECT name FROM items WHERE id = tasks.item_id),
+			(SELECT c.name FROM items AS i JOIN categories AS c ON c.id = i.category_id WHERE i.id = tasks.item_id),
+			$2,
 			NULL::TEXT,
 			action_type,
 			price,
@@ -211,7 +209,7 @@ func (r *Repository) CreateTask(categoryName, itemName, platformName, actionType
 	`
 
 	var task domain.TaskInfo
-	err := r.pool.QueryRow(context.Background(), query, categoryName, itemName, platformName, actionType, price).Scan(
+	err := r.pool.QueryRow(context.Background(), query, itemID, platformName, actionType, price).Scan(
 		&task.ID,
 		&task.ItemName,
 		&task.CategoryName,
@@ -226,48 +224,6 @@ func (r *Repository) CreateTask(categoryName, itemName, platformName, actionType
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.TaskInfo{}, repository.ErrTaskReferencesNotFound
 	}
-
-	return task, err
-}
-
-func (r *Repository) CreateTaskByCategoryID(categoryID int, itemName, platformName, actionType string, price decimal.Decimal) (domain.TaskInfo, error) {
-	const query = `
-		INSERT INTO tasks (item_id, platform_id, action_type, price, status)
-		SELECT i.id, p.id, $4, $5, 'not started'
-		FROM items AS i
-		JOIN platforms AS p ON p.name = $3
-		WHERE i.category_id = $1
-			AND i.name = $2
-		RETURNING
-			id,
-			(SELECT name FROM items WHERE id = item_id),
-			(SELECT name FROM categories WHERE id = $1),
-			$3,
-			NULL::TEXT,
-			action_type,
-			price,
-			status,
-			error,
-			lease_until
-	`
-
-	var task domain.TaskInfo
-	err := r.pool.QueryRow(context.Background(), query, categoryID, itemName, platformName, actionType, price).Scan(
-		&task.ID,
-		&task.ItemName,
-		&task.CategoryName,
-		&task.PlatformName,
-		&task.ExecutorName,
-		&task.ActionType,
-		&task.Price,
-		&task.Status,
-		&task.Error,
-		&task.LeaseUntil,
-	)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return domain.TaskInfo{}, repository.ErrTaskReferencesNotFound
-	}
-
 	return task, err
 }
 

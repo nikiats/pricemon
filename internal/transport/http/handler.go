@@ -30,8 +30,7 @@ type Service interface {
 	ExtendTaskLease(taskID int, leaseToken string, leaseSeconds int, executorToken string) (time.Time, error)
 	ReportTaskResult(taskID int, leaseToken string, status domain.TaskStatus, errorText *string, executorToken string) (domain.TaskStatus, error)
 	GetTasks() ([]domain.TaskInfo, error)
-	CreateTask(categoryName, itemName, platformName, actionType, price string) (domain.TaskInfo, error)
-	CreateTaskByCategoryID(categoryID int, itemName, platformName, actionType, price string) (domain.TaskInfo, error)
+	CreateTask(itemID int, platformName, actionType, price string) (domain.TaskInfo, error)
 	DeleteTask(taskID int) error
 }
 
@@ -71,7 +70,6 @@ func (h *Handler) Register(router *gin.Engine) {
 	tasks := router.Group("/tasks")
 	tasks.GET("", h.tasksPageOrList)
 	tasks.POST("", h.createTask)
-	tasks.POST("/from-summary", h.createTaskFromSummary)
 	tasks.DELETE("/:taskID", h.deleteTask)
 	tasks.POST("/claim", h.claimTask)
 	tasks.PUT("/:taskID/lease", h.extendTaskLease)

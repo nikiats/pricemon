@@ -177,7 +177,7 @@ paths:
           $ref: '#/components/responses/InternalServerError'
     post:
       summary: Создать задачу
-      description: Создаёт не начатую задачу по названиям категории, предмета и площадки.
+      description: Создаёт не начатую задачу по идентификатору предмета.
       requestBody:
         required: true
         content:
@@ -208,27 +208,6 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '409':
           $ref: '#/components/responses/Conflict'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-  /tasks/from-summary:
-    post:
-      summary: Создать задачу из сводки
-      description: Создаёт не начатую задачу для выбранных предмета, площадки и цены из сводной таблицы.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateTaskFromSummaryRequest'
-      responses:
-        '201':
-          description: Задача создана
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskInfo'
-        '400':
-          $ref: '#/components/responses/BadRequest'
         '500':
           $ref: '#/components/responses/InternalServerError'
   /tasks/claim:
@@ -489,9 +468,12 @@ components:
   schemas:
     ItemSummary:
       type: object
-      required: [id, name, categoryID]
+      required: [id, itemID, name, categoryID]
       properties:
         id:
+          type: integer
+          format: int64
+        itemID:
           type: integer
           format: int64
         name:
@@ -738,28 +720,11 @@ components:
           description: Текущий статус задачи. Передаётся, если результат задачи уже был сохранён.
     CreateTaskRequest:
       type: object
-      required: [categoryName, itemName, platformName, actionType, price]
+      required: [itemID, platformName, actionType, price]
       properties:
-        categoryName:
-          type: string
-        itemName:
-          type: string
-        platformName:
-          type: string
-        actionType:
-          type: string
-          enum: [buy, sell]
-        price:
-          type: string
-    CreateTaskFromSummaryRequest:
-      type: object
-      required: [categoryID, itemName, platformName, actionType, price]
-      properties:
-        categoryID:
+        itemID:
           type: integer
           format: int64
-        itemName:
-          type: string
         platformName:
           type: string
         actionType:
