@@ -11,7 +11,7 @@ import (
 )
 
 type Service interface {
-	ReceiveEvent(id, eventType string, payload json.RawMessage) error
+	ReceiveEvent(id string, payload json.RawMessage) error
 }
 
 type Handler struct {
@@ -29,7 +29,6 @@ func (h *Handler) Register(router *gin.Engine) {
 func (h *Handler) receiveItemSummaryEvent(c *gin.Context) {
 	var request struct {
 		ID      string          `json:"id"`
-		Type    string          `json:"type"`
 		Payload json.RawMessage `json:"payload"`
 	}
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -37,7 +36,7 @@ func (h *Handler) receiveItemSummaryEvent(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.ReceiveEvent(request.ID, request.Type, request.Payload); err != nil {
+	if err := h.service.ReceiveEvent(request.ID, request.Payload); err != nil {
 		if errors.Is(err, app.ErrInvalidEvent) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return

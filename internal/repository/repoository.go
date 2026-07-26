@@ -42,4 +42,7 @@ type Repository interface {
 	CreateTask(categoryName, itemName, platformName, actionType string, price decimal.Decimal) (domain.TaskInfo, error)
 	CreateTaskByCategoryID(categoryID int, itemName, platformName, actionType string, price decimal.Decimal) (domain.TaskInfo, error)
 	DeleteTask(taskID int) (bool, error)
+	GetOutboxMessages(limit int) ([]domain.OutboxMessage, error)
+	MarkOutboxMessageProcessed(id string) error
+	MarkOutboxMessageFailed(id, message string) error
 }

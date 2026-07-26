@@ -32,22 +32,22 @@ func (r *Repository) Close() {
 
 func (r *Repository) CreateInboxEvent(event domain.InboxEvent) error {
 	const query = `
-		INSERT INTO inbox_events (id, type, payload)
-		VALUES ($1, $2, $3::jsonb)
+		INSERT INTO inbox_events (id, payload)
+		VALUES ($1, $2::jsonb)
 		ON CONFLICT (id) DO NOTHING
 	`
 
-	_, err := r.pool.Exec(context.Background(), query, event.ID, event.Type, event.Payload)
+	_, err := r.pool.Exec(context.Background(), query, event.ID, event.Payload)
 	return err
 }
 
 func (r *Repository) GetPendingEvents(limit int) ([]domain.InboxEvent, error) {
 	const query = `
 		SELECT
-			id::text, type, payload, status, attempts, error,
-			received_at, next_attempt_at, lease_until, processed_at, updated_at
+			id::text, payload, status, error,
+			received_at, processed_at, updated_at
 		FROM inbox_events
-		WHERE status = 'PENDING' AND next_attempt_at <= NOW()
+		WHERE status = 'PENDING'
 		ORDER BY received_at, id
 		LIMIT $1
 	`
@@ -63,14 +63,10 @@ func (r *Repository) GetPendingEvents(limit int) ([]domain.InboxEvent, error) {
 		var event domain.InboxEvent
 		if err = rows.Scan(
 			&event.ID,
-			&event.Type,
 			&event.Payload,
 			&event.Status,
-			&event.Attempts,
 			&event.Error,
 			&event.ReceivedAt,
-			&event.NextAttemptAt,
-			&event.LeaseUntil,
 			&event.ProcessedAt,
 			&event.UpdatedAt,
 		); err != nil {
@@ -89,10 +85,21 @@ func (r *Repository) MarkEventsProcessed(ids []string) error {
 
 	const query = `
 		UPDATE inbox_events
-		SET status = 'PROCESSED', processed_at = NOW(), lease_until = NULL, error = NULL, updated_at = NOW()
+		SET status = 'PROCESSED', processed_at = NOW(), error = NULL, updated_at = NOW()
 		WHERE id = ANY($1::text[]::uuid[]) AND status = 'PENDING'
 	`
 
 	_, err := r.pool.Exec(context.Background(), query, ids)
+	return err
+}
+
+func (r *Repository) MarkEventFailed(id, message string) error {
+	const query = `
+		UPDATE inbox_events
+		SET status = 'FAILED', error = $2, updated_at = NOW()
+		WHERE id = $1::uuid AND status = 'PENDING'
+	`
+
+	_, err := r.pool.Exec(context.Background(), query, id, message)
 	return err
 }

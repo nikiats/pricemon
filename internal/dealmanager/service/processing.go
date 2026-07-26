@@ -24,14 +24,13 @@ func NewEventsWorker(repository repository.Repository) *EventsWorker {
 	return &EventsWorker{repository: repository}
 }
 
-func (s *EventsWorker) ReceiveEvent(id, eventType string, payload json.RawMessage) error {
-	if strings.TrimSpace(id) == "" || strings.TrimSpace(eventType) == "" || !json.Valid(payload) {
+func (s *EventsWorker) ReceiveEvent(id string, payload json.RawMessage) error {
+	if strings.TrimSpace(id) == "" || !json.Valid(payload) {
 		return ErrInvalidEvent
 	}
 
 	return s.repository.CreateInboxEvent(domain.InboxEvent{
 		ID:      id,
-		Type:    eventType,
 		Payload: payload,
 	})
 }
@@ -43,16 +42,19 @@ func (s *EventsWorker) ProcessPendingEvents() error {
 			return err
 		}
 
-		ids := make([]string, len(events))
-		for i, event := range events {
+		ids := make([]string, 0, len(events))
+		for _, event := range events {
 			var summary ItemSummaryEvent
 			if err = json.Unmarshal(event.Payload, &summary); err != nil {
-				return err
+				if err = s.repository.MarkEventFailed(event.ID, err.Error()); err != nil {
+					return err
+				}
+				continue
 			}
 
 			// TODO: обработать событие.
 			// в результате создается sequential_task или событие отбраковывается.
-			ids[i] = event.ID
+			ids = append(ids, event.ID)
 		}
 
 		if err = s.repository.MarkEventsProcessed(ids); err != nil {

@@ -24,21 +24,29 @@ func Run(config Config) error {
 	}
 	defer repository.Close()
 
+	// gopricemon API
 	router := gin.Default()
-	transport.NewHandler(service.NewService(repository, config.TaskLeaseMaxSeconds)).Register(router)
-
+	transport.NewHandler(
+		service.NewService(repository, config.TaskLeaseMaxSeconds),
+	).Register(router)
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", config.HTTPPort),
 		Handler: router,
 	}
 
+	// graceful stop
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	// запуск воркера отправки событий
+	publisher := service.NewOutboxPublisher(repository, config.DealManagerAPIBaseURL, config.OutboxPublishInterval)
+	go publisher.Run(ctx)
+
+	// запуск HTTP API
 	errorsCh := make(chan error, 1)
 	go func() {
 		errorsCh <- server.ListenAndServe()
 	}()
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 
 	select {
 	case err := <-errorsCh:
@@ -47,6 +55,7 @@ func Run(config Config) error {
 		}
 		return err
 	case <-ctx.Done():
+		// завершение работы по сигналу SIGTERM
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 

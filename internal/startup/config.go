@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -18,6 +19,7 @@ type Config struct {
 	HTTPPort              int
 	TaskLeaseMaxSeconds   int
 	DealManagerAPIBaseURL string
+	OutboxPublishInterval time.Duration
 }
 
 var (
@@ -25,6 +27,7 @@ var (
 	ErrPort           = errors.New("http server port not specified or incorrect")
 	ErrTaskLeaseMax   = errors.New("task lease max seconds incorrect")
 	ErrDealManagerAPI = errors.New("dealmanager api base url not set or incorrect")
+	ErrOutboxInterval = errors.New("outbox publish interval not specified or incorrect")
 )
 
 func LoadConfig() (*Config, error) {
@@ -58,12 +61,17 @@ func LoadConfig() (*Config, error) {
 	if err != nil {
 		return nil, ErrDealManagerAPI
 	}
+	outboxPublishInterval, err := time.ParseDuration(os.Getenv("OUTBOX_PUBLISH_INTERVAL"))
+	if err != nil || outboxPublishInterval <= 0 {
+		return nil, ErrOutboxInterval
+	}
 
 	return &Config{
 		DatabaseURL:           databaseURL,
 		HTTPPort:              httpPort,
 		TaskLeaseMaxSeconds:   taskLeaseMaxSeconds,
 		DealManagerAPIBaseURL: dealManagerAPIBaseURL,
+		OutboxPublishInterval: outboxPublishInterval,
 	}, nil
 }
 

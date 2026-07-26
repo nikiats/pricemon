@@ -1,19 +1,15 @@
 -- +goose Up
 CREATE TABLE inbox_events (
     id UUID PRIMARY KEY,
-    type TEXT NOT NULL,
     payload JSONB NOT NULL,
     status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'PROCESSING', 'PROCESSED', 'FAILED')),
-    attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts >= 0),
     error TEXT,
     received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    lease_until TIMESTAMPTZ,
     processed_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX inbox_events_ready_idx ON inbox_events (next_attempt_at, received_at)
+CREATE INDEX inbox_events_pending_idx ON inbox_events (received_at)
 WHERE status = 'PENDING';
 
 CREATE TABLE sequential_tasks (
