@@ -17,6 +17,24 @@ services:
       timeout: 5s
       retries: 10
 
+  dealmanager-postgres:
+    image: ${DEALMANAGER_POSTGRES_IMAGE}
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${DEALMANAGER_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${DEALMANAGER_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${DEALMANAGER_POSTGRES_DB}
+    ports:
+      - "${DEALMANAGER_POSTGRES_PORT}:5432"
+    volumes:
+      - dealmanager_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   migrate:
     build: .
     env_file:
@@ -38,5 +56,26 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
 
+  migrate-dealmanager:
+    build: .
+    env_file:
+      - .env
+    command: ["/app/migrate-dealmanager", "up"]
+    depends_on:
+      dealmanager-postgres:
+        condition: service_healthy
+    restart: "no"
+
+  dealmanager:
+    build: .
+    env_file:
+      - .env
+    command: ["/app/dealmanager"]
+    depends_on:
+      migrate-dealmanager:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
 volumes:
   postgres_data:
+  dealmanager_postgres_data:
