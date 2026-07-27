@@ -33,8 +33,8 @@
 		.positive { color: #19723b; }
 		.negative { color: #a42626; }
 		#status { min-height: 18px; margin: 10px 0 0; color: #666; }
-		#notification { position: fixed; right: 20px; bottom: 20px; z-index: 1; max-width: min(320px, calc(100vw - 28px)); overflow: hidden; padding: 7px 10px; border: 1px solid #161616; background: #fff; color: #161616; box-shadow: 3px 3px 0 #161616; opacity: 0; pointer-events: none; text-overflow: ellipsis; transform: translateY(8px); white-space: nowrap; transition: opacity .16s ease, transform .16s ease; }
-		#notification.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
+		#notification { position: fixed; right: 20px; bottom: 20px; z-index: 1; max-width: min(320px, calc(100vw - 28px)); padding: 7px 10px; border: 1px solid #161616; background: #fff; color: #161616; box-shadow: 3px 3px 0 #161616; opacity: 0; transform: translateY(8px); pointer-events: none; transition: opacity .16s ease, transform .16s ease; }
+		#notification.visible { opacity: 1; transform: translateY(0); }
 		#notification.error { border-color: #a42626; color: #a42626; box-shadow: 3px 3px 0 #a42626; }
 		#sentinel { height: 1px; }
 		@media (max-width: 640px) { body { margin-top: 24px; padding: 0 14px; } header { align-items: flex-start; flex-direction: column; gap: 12px; } }
@@ -78,7 +78,6 @@
 
 		function notify(message, isError = false) {
 			notification.textContent = message;
-			notification.title = message;
 			notification.classList.toggle('error', isError);
 			notification.classList.add('visible');
 			clearTimeout(notificationTimeout);

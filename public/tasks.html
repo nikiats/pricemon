@@ -22,6 +22,8 @@
 		.status { min-height: 18px; margin: 10px 0 0; color: #666; }
 		.failed { color: #a42626; }
 		.completed { color: #19723b; }
+		.task-error { width: 260px; }
+		.task-error span { display: block; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 		@media (max-width: 640px) { body { margin-top: 24px; padding: 0 14px; } header { align-items: flex-start; flex-direction: column; gap: 12px; } }
 	</style>
 </head>
@@ -55,6 +57,16 @@
 			return element;
 		}
 
+		function errorCell(error, failed) {
+			const element = document.createElement('td');
+			element.className = `task-error${failed ? ' failed' : ''}`;
+			element.title = error || '';
+			const content = document.createElement('span');
+			content.textContent = text(error);
+			element.append(content);
+			return element;
+		}
+
 		async function errorMessage(response, fallback) {
 			try {
 				const payload = await response.json();
@@ -85,7 +97,7 @@
 					cell(price(task.price)),
 					cell(taskStatus(task.status), statusClass),
 					cell(dateTime(task.leaseUntil)),
-					cell(text(task.error), task.status === 'failed' ? 'failed' : ''),
+					errorCell(task.error, task.status === 'failed'),
 				);
 				const actions = document.createElement('td');
 				if (task.status === 'in progress') {
