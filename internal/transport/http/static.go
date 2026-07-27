@@ -57,3 +57,14 @@ func (h *Handler) indexPage(c *gin.Context) {
 func (h *Handler) summaryPage(c *gin.Context) {
 	c.File("public/summary.html")
 }
+
+func (h *Handler) tradeSettingsPageOrJSON(c *gin.Context) {
+	c.Header("Vary", "Accept")
+
+	if strings.Contains(c.GetHeader("Accept"), "text/html") {
+		c.File("public/trade-settings.html")
+		return
+	}
+
+	h.getTradeSettings(c)
+}

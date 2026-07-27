@@ -65,6 +65,25 @@ func (r *Repository) MarkOutboxMessageFailed(id, message string) error {
 	return err
 }
 
+func (r *Repository) GetTradeSettings() (domain.TradeSettings, error) {
+	const query = `SELECT minimum_profit, maximum_summary_age_secs FROM trade_settings WHERE id = TRUE`
+
+	var settings domain.TradeSettings
+	err := r.pool.QueryRow(context.Background(), query).Scan(&settings.MinimumProfit, &settings.MaximumSummaryAgeSecs)
+	return settings, err
+}
+
+func (r *Repository) InitializeTradeSettings(minimumProfit decimal.Decimal, maximumSummaryAgeSecs int) error {
+	const query = `
+		INSERT INTO trade_settings (id, minimum_profit, maximum_summary_age_secs)
+		VALUES (TRUE, $1, $2)
+		ON CONFLICT (id) DO NOTHING
+	`
+
+	_, err := r.pool.Exec(context.Background(), query, minimumProfit, maximumSummaryAgeSecs)
+	return err
+}
+
 func (r *Repository) SetTradeSettings(minimumProfit decimal.Decimal, maximumSummaryAgeSecs int) error {
 	const query = `
 		INSERT INTO trade_settings (id, minimum_profit, maximum_summary_age_secs)

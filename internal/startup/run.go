@@ -25,7 +25,7 @@ func Run(config Config) error {
 	defer repository.Close()
 
 	application := service.NewService(repository, config.TaskLeaseMaxSeconds)
-	if err = application.SetTradeSettings(config.MinimumProfit, config.MaximumSummaryAgeSecs); err != nil {
+	if err = application.InitializeTradeSettings(config.MinimumProfit, config.MaximumSummaryAgeSecs); err != nil {
 		return err
 	}
 

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ru">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Настройки трейдов</title>
+	<style>
+		:root { color: #161616; background: #fff; font-family: Consolas, "Courier New", monospace; }
+		* { box-sizing: border-box; }
+		body { max-width: 720px; margin: 40px auto; padding: 0 20px; font-size: 13px; }
+		header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 22px; }
+		h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.04em; }
+		.home-link { background: #161616; color: #fff; padding: 5px 9px; font: inherit; line-height: 1.2; text-decoration: none; }
+		.home-link:hover, button:hover { background: #444; }
+		form { display: grid; gap: 14px; max-width: 380px; border-top: 1px solid #161616; padding-top: 14px; }
+		label { display: grid; gap: 5px; color: #666; }
+		input { width: 100%; border: 0; border-bottom: 1px solid #bdbdbd; padding: 3px 0; font: inherit; color: #161616; outline: none; }
+		input:focus { border-color: #161616; }
+		button { justify-self: start; border: 0; background: #161616; color: #fff; padding: 5px 9px; font: inherit; cursor: pointer; }
+		.status { min-height: 18px; margin: 10px 0 0; color: #666; }
+		.error { color: #a42626; }
+		@media (max-width: 640px) { body { margin-top: 24px; padding: 0 14px; } }
+	</style>
+</head>
+<body>
+	<header>
+		<a class="home-link" href="/">← Назад</a>
+		<h1>Настройки трейдов</h1>
+	</header>
+	<form id="settings">
+		<label>Минимальная прибыль <input name="minimumProfit" inputmode="decimal" required></label>
+		<label>Максимальный возраст, с <input name="maximumSummaryAgeSecs" type="number" min="1" step="1" required></label>
+		<button>Сохранить</button>
+	</form>
+	<p id="status" class="status" aria-live="polite"></p>
+	<script>
+		const form = document.querySelector('#settings');
+		const status = document.querySelector('#status');
+
+		async function errorMessage(response, fallback) {
+			try {
+				const payload = await response.json();
+				return payload.error || fallback;
+			} catch {
+				return fallback;
+			}
+		}
+
+		async function load() {
+			const response = await fetch('/trade-settings', { headers: { Accept: 'application/json' }, cache: 'no-store' });
+			if (!response.ok) {
+				status.textContent = 'Не удалось загрузить настройки';
+				status.classList.add('error');
+				return;
+			}
+			const settings = await response.json();
+			form.minimumProfit.value = settings.minimumProfit;
+			form.maximumSummaryAgeSecs.value = settings.maximumSummaryAgeSecs;
+		}
+
+		form.onsubmit = async event => {
+			event.preventDefault();
+			const response = await fetch('/trade-settings', {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					minimumProfit: form.minimumProfit.value,
+					maximumSummaryAgeSecs: Number(form.maximumSummaryAgeSecs.value),
+				}),
+			});
+			if (!response.ok) {
+				status.textContent = await errorMessage(response, 'Не удалось сохранить настройки');
+				status.classList.add('error');
+				return;
+			}
+			status.textContent = 'Настройки сохранены';
+			status.classList.remove('error');
+		};
+
+		load();
+	</script>
+</body>
+</html>

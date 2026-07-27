@@ -25,3 +25,8 @@ type Platform struct {
 	Name  string
 	Token string
 }
+
+type TradeSettings struct {
+	MinimumProfit         decimal.Decimal
+	MaximumSummaryAgeSecs int
+}

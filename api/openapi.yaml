@@ -158,6 +158,35 @@ paths:
           $ref: '#/components/responses/Conflict'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /trade-settings:
+    get:
+      summary: Получить настройки трейдов
+      description: Возвращает минимальную прибыль и максимальный возраст сводки для создания кандидата на сделку.
+      responses:
+        '200':
+          description: Настройки трейдов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TradeSettings'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      summary: Обновить настройки трейдов
+      description: Обновляет минимальную прибыль и максимальный возраст сводки для новых кандидатов на сделку.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TradeSettings'
+      responses:
+        '204':
+          description: Настройки обновлены
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /tasks:
     get:
       summary: Получить задачи
@@ -488,6 +517,15 @@ components:
         type: integer
         format: int64
   schemas:
+    TradeSettings:
+      type: object
+      required: [minimumProfit, maximumSummaryAgeSecs]
+      properties:
+        minimumProfit:
+          type: string
+        maximumSummaryAgeSecs:
+          type: integer
+          minimum: 1
     ItemSummary:
       type: object
       required: [id, itemID, name, categoryID]

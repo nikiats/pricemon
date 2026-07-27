@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
 
 	"gopricemon/internal/domain"
 )
@@ -13,6 +14,8 @@ import (
 type Service interface {
 	GetSummary(categoryID, offset, limit int, maxAge *int) (domain.SummaryPage, error)
 	GetInventory() ([]domain.InventorySummary, error)
+	GetTradeSettings() (domain.TradeSettings, error)
+	SetTradeSettings(minimumProfit decimal.Decimal, maximumSummaryAgeSecs int) error
 	SetOffer(offer domain.Offer) error
 	SetOffers(offers []domain.Offer) error
 	SetZeroCount(categoryID int, itemName string, platformID int, platformToken string) (bool, error)
@@ -49,6 +52,8 @@ func (h *Handler) Register(router *gin.Engine) {
 	router.GET("/categories/:categoryID/summary", h.getSummary)
 	router.GET("/", h.indexPage)
 	router.GET("/summary", h.summaryPage)
+	router.GET("/trade-settings", h.tradeSettingsPageOrJSON)
+	router.PUT("/trade-settings", h.setTradeSettings)
 	router.PUT("/offers", h.setOffer)
 	router.PUT("/offers/bulk", h.setOffers)
 	router.PUT("/offers/zero-count", h.setZeroCount)

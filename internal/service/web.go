@@ -77,6 +77,21 @@ func (s *Service) SetTradeSettings(minimumProfit decimal.Decimal, maximumSummary
 	return s.repo.SetTradeSettings(minimumProfit, maximumSummaryAgeSecs)
 }
 
+func (s *Service) InitializeTradeSettings(minimumProfit decimal.Decimal, maximumSummaryAgeSecs int) error {
+	if minimumProfit.IsNegative() {
+		return ErrInvalidMinimumProfit
+	}
+	if maximumSummaryAgeSecs < 1 {
+		return ErrInvalidSummaryAge
+	}
+
+	return s.repo.InitializeTradeSettings(minimumProfit, maximumSummaryAgeSecs)
+}
+
+func (s *Service) GetTradeSettings() (domain.TradeSettings, error) {
+	return s.repo.GetTradeSettings()
+}
+
 func (s *Service) GetPlatforms() ([]domain.Platform, error) {
 	return s.repo.GetPlatforms()
 }
