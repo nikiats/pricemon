@@ -12,21 +12,23 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"gopricemon/internal/dealmanager/gopricemon"
 	"gopricemon/internal/dealmanager/repository/postgres"
 	app "gopricemon/internal/dealmanager/service"
 	transport "gopricemon/internal/dealmanager/transport/http"
 )
 
-func Run(config ServerConfig) error {
+func Run(config Config) error {
 	repository, err := postgres.NewRepository(config.DatabaseURL)
 	if err != nil {
 		return err
 	}
 	defer repository.Close()
 
-	worker := app.NewEventsWorker(repository)
+	inboxWorker := app.NewEventsWorker(repository, config.MaximumSummaryAgeSecs)
+	taskWorker := app.NewTaskWorker(repository, gopricemon.NewClient(config.GoPriceMonAPIBaseURL))
 	router := gin.Default()
-	transport.NewHandler(worker).Register(router)
+	transport.NewHandler(inboxWorker).Register(router)
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", config.HTTPPort),
@@ -37,7 +39,8 @@ func Run(config ServerConfig) error {
 	defer stopWorker()
 
 	// запуск воркера
-	go worker.RunEventWorker(workerCtx, config.EventProcessInterval)
+	go inboxWorker.RunEventWorker(workerCtx, config.EventProcessInterval)
+	go taskWorker.RunTaskWorker(workerCtx, config.EventProcessInterval)
 
 	errorsCh := make(chan error, 1)
 	// запуск HTTP API

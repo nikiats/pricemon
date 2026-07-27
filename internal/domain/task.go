@@ -42,4 +42,5 @@ type TaskInfo struct {
 	Status       TaskStatus
 	Error        *string
 	LeaseUntil   *time.Time
+	CompletedAt  *time.Time
 }

@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"gopricemon/internal/dealmanager/domain"
@@ -48,7 +49,7 @@ func (r *Repository) GetPendingEvents(limit int) ([]domain.InboxEvent, error) {
 			received_at, processed_at, updated_at
 		FROM inbox_events
 		WHERE status = 'PENDING'
-		ORDER BY received_at, id
+		ORDER BY (payload ->> 'buyPrice')::numeric - (payload ->> 'sellPrice')::numeric DESC NULLS LAST, received_at, id
 		LIMIT $1
 	`
 
@@ -76,6 +77,90 @@ func (r *Repository) GetPendingEvents(limit int) ([]domain.InboxEvent, error) {
 	}
 
 	return events, rows.Err()
+}
+
+func (r *Repository) GetActiveSequentialTask() (*domain.SequentialTask, error) {
+	const query = `
+		SELECT
+			id, inbox_event_id::text, category_id, item_id,
+			platform_sell_id, platform_buy_id, sell_price, buy_price,
+			buy_task_id, sell_task_id, status, error, created_at, updated_at
+		FROM sequential_tasks
+		WHERE status IN ('NOT STARTED', 'BUYING', 'SELLING')
+		LIMIT 1
+	`
+
+	var task domain.SequentialTask
+	err := r.pool.QueryRow(context.Background(), query).Scan(
+		&task.ID,
+		&task.InboxEventID,
+		&task.CategoryID,
+		&task.ItemID,
+		&task.PlatformSellID,
+		&task.PlatformBuyID,
+		&task.SellPrice,
+		&task.BuyPrice,
+		&task.BuyTaskID,
+		&task.SellTaskID,
+		&task.Status,
+		&task.Error,
+		&task.CreatedAt,
+		&task.UpdatedAt,
+	)
+	if err == pgx.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &task, nil
+}
+
+func (r *Repository) CreateSequentialTask(task domain.SequentialTask) error {
+	const query = `
+		INSERT INTO sequential_tasks (
+			inbox_event_id, category_id, item_id,
+			platform_sell_id, platform_buy_id, sell_price, buy_price, status
+		)
+		VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8)
+	`
+
+	_, err := r.pool.Exec(
+		context.Background(), query,
+		task.InboxEventID,
+		task.CategoryID,
+		task.ItemID,
+		task.PlatformSellID,
+		task.PlatformBuyID,
+		task.SellPrice,
+		task.BuyPrice,
+		task.Status,
+	)
+	return err
+}
+
+func (r *Repository) UpdateSequentialTask(task domain.SequentialTask) error {
+	const query = `
+		UPDATE sequential_tasks
+		SET
+			buy_task_id = $2,
+			sell_task_id = $3,
+			status = $4,
+			error = $5,
+			updated_at = NOW()
+		WHERE id = $1
+	`
+
+	_, err := r.pool.Exec(
+		context.Background(), query,
+		task.ID,
+		task.BuyTaskID,
+		task.SellTaskID,
+		task.Status,
+		task.Error,
+	)
+	return err
 }
 
 func (r *Repository) MarkEventsProcessed(ids []string) error {

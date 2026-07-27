@@ -33,6 +33,7 @@ type taskInfoResponse struct {
 	Status       domain.TaskStatus `json:"status"`
 	Error        *string           `json:"error"`
 	LeaseUntil   *time.Time        `json:"leaseUntil"`
+	CompletedAt  *time.Time        `json:"completedAt"`
 }
 
 func (h *Handler) getTasks(c *gin.Context) {
@@ -60,10 +61,49 @@ func (h *Handler) getTasks(c *gin.Context) {
 			Status:       task.Status,
 			Error:        task.Error,
 			LeaseUntil:   task.LeaseUntil,
+			CompletedAt:  task.CompletedAt,
 		}
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+func (h *Handler) getTask(c *gin.Context) {
+	taskID, err := strconv.Atoi(c.Param("taskID"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid task ID"})
+		return
+	}
+
+	task, err := h.service.GetTask(taskID)
+	if err != nil {
+		if errors.Is(err, service.ErrInvalidTaskID) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		if errors.Is(err, service.ErrTaskNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+
+		_ = c.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, taskInfoResponse{
+		ID:           task.ID,
+		ItemName:     task.ItemName,
+		CategoryName: task.CategoryName,
+		PlatformName: task.PlatformName,
+		ExecutorName: task.ExecutorName,
+		ActionType:   task.ActionType,
+		Price:        task.Price,
+		Status:       task.Status,
+		Error:        task.Error,
+		LeaseUntil:   task.LeaseUntil,
+		CompletedAt:  task.CompletedAt,
+	})
 }
 
 func (h *Handler) createTask(c *gin.Context) {
@@ -105,6 +145,7 @@ func (h *Handler) createTask(c *gin.Context) {
 		Status:       task.Status,
 		Error:        task.Error,
 		LeaseUntil:   task.LeaseUntil,
+		CompletedAt:  task.CompletedAt,
 	})
 }
 

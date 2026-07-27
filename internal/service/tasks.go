@@ -49,6 +49,22 @@ func (s *Service) GetTasks() ([]domain.TaskInfo, error) {
 	return s.repo.GetTasks()
 }
 
+func (s *Service) GetTask(taskID int) (domain.TaskInfo, error) {
+	if taskID < 1 {
+		return domain.TaskInfo{}, ErrInvalidTaskID
+	}
+
+	task, err := s.repo.GetTask(taskID)
+	if err != nil {
+		return domain.TaskInfo{}, err
+	}
+	if task == nil {
+		return domain.TaskInfo{}, ErrTaskNotFound
+	}
+
+	return *task, nil
+}
+
 func (s *Service) CreateTask(itemID int, platformName, actionType, priceRaw string) (domain.TaskInfo, error) {
 	if itemID < 1 {
 		return domain.TaskInfo{}, ErrInvalidItemID
@@ -145,7 +161,7 @@ func (s *Service) ReportTaskResult(taskID int, leaseToken string, status domain.
 		return "", err
 	}
 
-	task, reported, err := s.repo.ReportTaskResult(taskID, executor.ID, leaseToken, status, errorText)
+	task, reported, err := s.repo.ReportTaskResult(taskID, executor.ID, leaseToken, status, errorText, time.Now())
 	if err != nil {
 		return "", err
 	}

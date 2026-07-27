@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	config, err := startup.LoadServerConfig()
+	config, err := startup.LoadConfig()
 	if err != nil {
 		log.Fatal(err)
 	}

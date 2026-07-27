@@ -90,12 +90,13 @@ func (r *Repository) ExtendTaskLease(taskID, executorID int, leaseToken string, 
 	return leaseUntil, true, err
 }
 
-func (r *Repository) ReportTaskResult(taskID, executorID int, leaseToken string, status domain.TaskStatus, errorText *string) (*domain.TaskReportState, bool, error) {
+func (r *Repository) ReportTaskResult(taskID, executorID int, leaseToken string, status domain.TaskStatus, errorText *string, completedAt time.Time) (*domain.TaskReportState, bool, error) {
 	const updateQuery = `
 		UPDATE tasks
 		SET
 			status = $4,
 			error = $5,
+			completed_at = $6,
 			lease_token = NULL,
 			lease_until = NULL
 		WHERE id = $1
@@ -107,7 +108,7 @@ func (r *Repository) ReportTaskResult(taskID, executorID int, leaseToken string,
 	`
 
 	var updatedStatus domain.TaskStatus
-	err := r.pool.QueryRow(context.Background(), updateQuery, taskID, executorID, leaseToken, status, errorText).Scan(&updatedStatus)
+	err := r.pool.QueryRow(context.Background(), updateQuery, taskID, executorID, leaseToken, status, errorText, completedAt).Scan(&updatedStatus)
 	if err == nil {
 		return nil, true, nil
 	}
@@ -150,7 +151,8 @@ func (r *Repository) GetTasks() ([]domain.TaskInfo, error) {
 			t.price,
 			t.status,
 			t.error,
-			t.lease_until
+			t.lease_until,
+			t.completed_at
 		FROM tasks AS t
 		LEFT JOIN items AS i ON i.id = t.item_id
 		LEFT JOIN categories AS c ON c.id = i.category_id
@@ -179,6 +181,7 @@ func (r *Repository) GetTasks() ([]domain.TaskInfo, error) {
 			&task.Status,
 			&task.Error,
 			&task.LeaseUntil,
+			&task.CompletedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -186,6 +189,52 @@ func (r *Repository) GetTasks() ([]domain.TaskInfo, error) {
 	}
 
 	return tasks, rows.Err()
+}
+
+func (r *Repository) GetTask(taskID int) (*domain.TaskInfo, error) {
+	const query = `
+		SELECT
+			t.id,
+			i.name,
+			c.name,
+			p.name,
+			e.name,
+			t.action_type,
+			t.price,
+			t.status,
+			t.error,
+			t.lease_until,
+			t.completed_at
+		FROM tasks AS t
+		LEFT JOIN items AS i ON i.id = t.item_id
+		LEFT JOIN categories AS c ON c.id = i.category_id
+		JOIN platforms AS p ON p.id = t.platform_id
+		LEFT JOIN executors AS e ON e.id = t.executor_id
+		WHERE t.id = $1
+	`
+
+	var task domain.TaskInfo
+	err := r.pool.QueryRow(context.Background(), query, taskID).Scan(
+		&task.ID,
+		&task.ItemName,
+		&task.CategoryName,
+		&task.PlatformName,
+		&task.ExecutorName,
+		&task.ActionType,
+		&task.Price,
+		&task.Status,
+		&task.Error,
+		&task.LeaseUntil,
+		&task.CompletedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &task, nil
 }
 
 func (r *Repository) CreateTask(itemID int, platformName, actionType string, price decimal.Decimal) (domain.TaskInfo, error) {

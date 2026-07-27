@@ -196,6 +196,28 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
   /tasks/{taskID}:
+    get:
+      summary: Получить задачу
+      description: Возвращает данные задачи по идентификатору.
+      parameters:
+        - $ref: '#/components/parameters/TaskID'
+      responses:
+        '200':
+          description: Задача
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskInfo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Задача не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     delete:
       summary: Отменить задачу
       description: Удаляет задачу, если она ещё не взята в работу.
@@ -758,6 +780,9 @@ components:
         error:
           type: [string, 'null']
         leaseUntil:
+          type: [string, 'null']
+          format: date-time
+        completedAt:
           type: [string, 'null']
           format: date-time
     Error:
