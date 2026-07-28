@@ -17,9 +17,10 @@ const (
 )
 
 type Task struct {
-	ID     int     `json:"id"`
-	Status string  `json:"status"`
-	Error  *string `json:"error"`
+	ID          int        `json:"id"`
+	Status      string     `json:"status"`
+	Error       *string    `json:"error"`
+	CompletedAt *time.Time `json:"completedAt"`
 }
 
 type Client struct {
@@ -34,7 +35,7 @@ func NewClient(baseURL string) *Client {
 	}
 }
 
-func (c *Client) CreateTask(itemID, platformID int, actionType string, price decimal.Decimal) (int, error) {
+func (c *Client) CreateTask(itemID, platformID int, actionType string, price decimal.Decimal, taskKey string) (int, error) {
 	platformName, err := c.platformName(platformID)
 	if err != nil {
 		return 0, err
@@ -45,11 +46,13 @@ func (c *Client) CreateTask(itemID, platformID int, actionType string, price dec
 		PlatformName string `json:"platformName"`
 		ActionType   string `json:"actionType"`
 		Price        string `json:"price"`
+		TaskKey      string `json:"taskKey"`
 	}{
 		ItemID:       itemID,
 		PlatformName: platformName,
 		ActionType:   actionType,
 		Price:        price.String(),
+		TaskKey:      taskKey,
 	})
 	if err != nil {
 		return 0, err

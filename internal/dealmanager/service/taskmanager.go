@@ -14,7 +14,7 @@ import (
 )
 
 type TaskClient interface {
-	CreateTask(itemID, platformID int, actionType string, price decimal.Decimal) (int, error)
+	CreateTask(itemID, platformID int, actionType string, price decimal.Decimal, taskKey string) (int, error)
 	GetTask(taskID int) (gopricemon.Task, error)
 }
 
@@ -65,7 +65,7 @@ func (s *TaskWorker) RunTaskWorker(ctx context.Context, interval time.Duration) 
 }
 
 func (s *TaskWorker) startBuying(task *domain.SequentialTask) error {
-	taskID, err := s.client.CreateTask(task.ItemID, task.PlatformSellID, "buy", task.SellPrice)
+	taskID, err := s.client.CreateTask(task.ItemID, task.PlatformSellID, "buy", task.SellPrice, taskKey(task.ID, "buy"))
 	if err != nil {
 		return err
 	}
@@ -88,14 +88,7 @@ func (s *TaskWorker) processBuying(task *domain.SequentialTask) error {
 	case gopricemon.TaskStatusFailed:
 		return s.fail(task, taskError(buyTask.Error))
 	case gopricemon.TaskStatusCompleted:
-		taskID, err := s.client.CreateTask(task.ItemID, task.PlatformBuyID, "sell", task.BuyPrice)
-		if err != nil {
-			return err
-		}
-
-		task.SellTaskID = &taskID
-		task.Status = domain.SequentialTaskStatusSelling
-		return s.repo.UpdateSequentialTask(*task)
+		return s.startSelling(task)
 	}
 
 	return nil
@@ -103,7 +96,7 @@ func (s *TaskWorker) processBuying(task *domain.SequentialTask) error {
 
 func (s *TaskWorker) processSelling(task *domain.SequentialTask) error {
 	if task.SellTaskID == nil {
-		return s.fail(task, "sell task ID is not set")
+		return s.startSelling(task)
 	}
 
 	sellTask, err := s.client.GetTask(*task.SellTaskID)
@@ -112,13 +105,23 @@ func (s *TaskWorker) processSelling(task *domain.SequentialTask) error {
 	}
 	switch sellTask.Status {
 	case gopricemon.TaskStatusFailed:
-		return s.fail(task, taskError(sellTask.Error))
+		return s.failSelling(task, taskError(sellTask.Error))
 	case gopricemon.TaskStatusCompleted:
-		task.Status = domain.SequentialTaskStatusCompleted
-		return s.repo.UpdateSequentialTask(*task)
+		return s.repo.CompleteSellingSequentialTask(task.ID)
 	}
 
 	return nil
+}
+
+func (s *TaskWorker) startSelling(task *domain.SequentialTask) error {
+	taskID, err := s.client.CreateTask(task.ItemID, task.PlatformBuyID, "sell", task.BuyPrice, taskKey(task.ID, "sell"))
+	if err != nil {
+		return err
+	}
+
+	task.SellTaskID = &taskID
+	task.Status = domain.SequentialTaskStatusSelling
+	return s.repo.UpdateSequentialTask(*task)
 }
 
 func (s *TaskWorker) fail(task *domain.SequentialTask, message string) error {
@@ -133,4 +136,8 @@ func taskError(errorText *string) string {
 	}
 
 	return fmt.Sprintf("gopricemon task failed: %s", *errorText)
+}
+
+func taskKey(taskID int, actionType string) string {
+	return fmt.Sprintf("dealmanager:%d:%s", taskID, actionType)
 }

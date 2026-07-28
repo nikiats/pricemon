@@ -237,18 +237,20 @@ func (r *Repository) GetTask(taskID int) (*domain.TaskInfo, error) {
 	return &task, nil
 }
 
-func (r *Repository) CreateTask(itemID int, platformName, actionType string, price decimal.Decimal) (domain.TaskInfo, error) {
+func (r *Repository) CreateTask(itemID int, platformName, actionType string, price decimal.Decimal, taskKey string) (domain.TaskInfo, error) {
 	const query = `
-		INSERT INTO tasks (item_id, platform_id, action_type, price, status)
-		SELECT i.id, p.id, $3, $4, 'not started'
+		INSERT INTO tasks (item_id, platform_id, action_type, price, status, task_key)
+		SELECT i.id, p.id, $3, $4, 'not started', NULLIF($5, '')
 		FROM items AS i
 		JOIN platforms AS p ON p.name = $2
 		WHERE i.id = $1
+		ON CONFLICT (task_key) DO UPDATE
+		SET task_key = EXCLUDED.task_key
 		RETURNING
 			id,
 			(SELECT name FROM items WHERE id = tasks.item_id),
 			(SELECT c.name FROM items AS i JOIN categories AS c ON c.id = i.category_id WHERE i.id = tasks.item_id),
-			$2,
+			(SELECT name FROM platforms WHERE id = tasks.platform_id),
 			NULL::TEXT,
 			action_type,
 			price,
@@ -258,7 +260,7 @@ func (r *Repository) CreateTask(itemID int, platformName, actionType string, pri
 	`
 
 	var task domain.TaskInfo
-	err := r.pool.QueryRow(context.Background(), query, itemID, platformName, actionType, price).Scan(
+	err := r.pool.QueryRow(context.Background(), query, itemID, platformName, actionType, price, taskKey).Scan(
 		&task.ID,
 		&task.ItemName,
 		&task.CategoryName,

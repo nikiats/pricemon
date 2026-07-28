@@ -792,6 +792,9 @@ components:
           enum: [buy, sell]
         price:
           type: string
+        taskKey:
+          type: string
+          description: Необязательный ключ идемпотентности создания задачи.
     TaskInfo:
       type: object
       required: [id, platformName, actionType, price, status]

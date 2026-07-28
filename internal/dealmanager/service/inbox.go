@@ -66,7 +66,7 @@ func (s *InboxWorker) ProcessPendingEvents() error {
 				continue
 			}
 
-			if err = s.repo.CreateSequentialTask(domain.SequentialTask{
+			task := domain.SequentialTask{
 				InboxEventID:   event.ID,
 				CategoryID:     payload.CategoryID,
 				ItemID:         payload.ItemID,
@@ -75,7 +75,18 @@ func (s *InboxWorker) ProcessPendingEvents() error {
 				SellPrice:      payload.SellPrice,
 				BuyPrice:       payload.BuyPrice,
 				Status:         domain.SequentialTaskStatusNotStarted,
-			}); err != nil {
+			}
+			item, err := s.repo.GetAvailableUnboundItem(payload.ItemID, payload.BuyPrice)
+			if err != nil {
+				return err
+			}
+			if item != nil {
+				task.Status = domain.SequentialTaskStatusSelling
+				err = s.repo.CreateSellingSequentialTask(task, item.ID)
+			} else {
+				err = s.repo.CreateSequentialTask(task)
+			}
+			if err != nil {
 				return err
 			}
 

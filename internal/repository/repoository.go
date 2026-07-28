@@ -40,7 +40,7 @@ type Repository interface {
 	ReportTaskResult(taskID, executorID int, leaseToken string, status domain.TaskStatus, errorText *string, completedAt time.Time) (*domain.TaskReportState, bool, error)
 	GetTasks() ([]domain.TaskInfo, error)
 	GetTask(taskID int) (*domain.TaskInfo, error)
-	CreateTask(itemID int, platformName, actionType string, price decimal.Decimal) (domain.TaskInfo, error)
+	CreateTask(itemID int, platformName, actionType string, price decimal.Decimal, taskKey string) (domain.TaskInfo, error)
 	DeleteTask(taskID int) (bool, error)
 	GetOutboxMessages(limit int) ([]domain.OutboxMessage, error)
 	MarkOutboxMessageProcessed(id string) error

@@ -65,7 +65,7 @@ func (s *Service) GetTask(taskID int) (domain.TaskInfo, error) {
 	return *task, nil
 }
 
-func (s *Service) CreateTask(itemID int, platformName, actionType, priceRaw string) (domain.TaskInfo, error) {
+func (s *Service) CreateTask(itemID int, platformName, actionType, priceRaw, taskKey string) (domain.TaskInfo, error) {
 	if itemID < 1 {
 		return domain.TaskInfo{}, ErrInvalidItemID
 	}
@@ -83,7 +83,7 @@ func (s *Service) CreateTask(itemID int, platformName, actionType, priceRaw stri
 		return domain.TaskInfo{}, ErrInvalidTaskPrice
 	}
 
-	task, err := s.repo.CreateTask(itemID, platformName, actionType, price)
+	task, err := s.repo.CreateTask(itemID, platformName, actionType, price, strings.TrimSpace(taskKey))
 	if errors.Is(err, repository.ErrTaskReferencesNotFound) {
 		return domain.TaskInfo{}, ErrTaskReferencesNotFound
 	}

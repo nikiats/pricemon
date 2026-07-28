@@ -34,7 +34,7 @@ type Service interface {
 	ReportTaskResult(taskID int, leaseToken string, status domain.TaskStatus, errorText *string, executorToken string) (domain.TaskStatus, error)
 	GetTasks() ([]domain.TaskInfo, error)
 	GetTask(taskID int) (domain.TaskInfo, error)
-	CreateTask(itemID int, platformName, actionType, price string) (domain.TaskInfo, error)
+	CreateTask(itemID int, platformName, actionType, price, taskKey string) (domain.TaskInfo, error)
 	DeleteTask(taskID int) error
 }
 

@@ -112,13 +112,14 @@ func (h *Handler) createTask(c *gin.Context) {
 		PlatformName string `json:"platformName"`
 		ActionType   string `json:"actionType"`
 		Price        string `json:"price"`
+		TaskKey      string `json:"taskKey"`
 	}
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
 
-	task, err := h.service.CreateTask(request.ItemID, request.PlatformName, request.ActionType, request.Price)
+	task, err := h.service.CreateTask(request.ItemID, request.PlatformName, request.ActionType, request.Price, request.TaskKey)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidItemID) ||
 			errors.Is(err, service.ErrInvalidTaskPlatform) ||
