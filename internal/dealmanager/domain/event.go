@@ -34,4 +34,5 @@ type ItemSummaryPayload struct {
 	SellPrice      decimal.Decimal `json:"sellPrice"`
 	BuyPrice       decimal.Decimal `json:"buyPrice"`
 	ActualAt       time.Time       `json:"actualAt"`
+	ExpiresAt      time.Time       `json:"expiresAt"`
 }

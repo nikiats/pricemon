@@ -120,6 +120,27 @@ func (r *Repository) GetActiveSequentialTask() (*domain.SequentialTask, error) {
 	return &task, nil
 }
 
+func (r *Repository) GetLastFinishedAt(itemID int) (*time.Time, error) {
+	const query = `
+		SELECT finished_at
+		FROM sequential_tasks
+		WHERE item_id = $1 AND finished_at IS NOT NULL
+		ORDER BY finished_at DESC
+		LIMIT 1
+	`
+
+	var finishedAt time.Time
+	err := r.pool.QueryRow(context.Background(), query, itemID).Scan(&finishedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &finishedAt, nil
+}
+
 func (r *Repository) CreateSequentialTask(task domain.SequentialTask) error {
 	const query = `
 		INSERT INTO sequential_tasks (
@@ -195,6 +216,10 @@ func (r *Repository) UpdateSequentialTask(task domain.SequentialTask) error {
 			sell_task_id = $3,
 			status = $4,
 			error = $5,
+			finished_at = CASE
+				WHEN $4 IN ('COMPLETED', 'FAILED') THEN COALESCE(finished_at, NOW())
+				ELSE finished_at
+			END,
 			updated_at = NOW()
 		WHERE id = $1
 	`
@@ -251,7 +276,7 @@ func (r *Repository) CompleteSellingSequentialTask(taskID int) error {
 
 	_, err = tx.Exec(context.Background(), `
 		UPDATE sequential_tasks
-		SET status = 'COMPLETED', error = NULL, updated_at = NOW()
+		SET status = 'COMPLETED', error = NULL, finished_at = NOW(), updated_at = NOW()
 		WHERE id = $1
 	`, taskID)
 	if err != nil {
@@ -301,7 +326,7 @@ func (r *Repository) FailSellingSequentialTask(task domain.SequentialTask, purch
 
 	_, err = tx.Exec(context.Background(), `
 		UPDATE sequential_tasks
-		SET status = $2, error = $3, updated_at = NOW()
+		SET status = $2, error = $3, finished_at = NOW(), updated_at = NOW()
 		WHERE id = $1
 	`, task.ID, task.Status, task.Error)
 	if err != nil {

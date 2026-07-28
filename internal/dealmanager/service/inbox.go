@@ -17,14 +17,12 @@ const eventBatchSize = 100
 var ErrInvalidEvent = errors.New("invalid event")
 
 type InboxWorker struct {
-	repo        repository.Repository
-	maxTradeAge int
+	repo repository.Repository
 }
 
-func NewEventsWorker(repository repository.Repository, maxTradeAge int) *InboxWorker {
+func NewEventsWorker(repository repository.Repository) *InboxWorker {
 	return &InboxWorker{
-		repo:        repository,
-		maxTradeAge: maxTradeAge,
+		repo: repository,
 	}
 }
 
@@ -61,7 +59,16 @@ func (s *InboxWorker) ProcessPendingEvents() error {
 				return err
 			}
 
-			if time.Since(payload.ActualAt) > time.Second*time.Duration(s.maxTradeAge) {
+			now := time.Now()
+			if !payload.ExpiresAt.After(payload.ActualAt) || !now.Before(payload.ExpiresAt) {
+				ids = append(ids, event.ID)
+				continue
+			}
+			lastFinishedAt, err := s.repo.GetLastFinishedAt(payload.ItemID)
+			if err != nil {
+				return err
+			}
+			if lastFinishedAt != nil && (now.Before(lastFinishedAt.Add(payload.ExpiresAt.Sub(payload.ActualAt))) || !payload.ActualAt.After(*lastFinishedAt)) {
 				ids = append(ids, event.ID)
 				continue
 			}

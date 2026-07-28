@@ -17,15 +17,13 @@ var (
 	ErrPort           = errors.New("dealmanager http port not specified or incorrect")
 	ErrEventInterval  = errors.New("dealmanager event process interval not specified or incorrect")
 	ErrGoPriceMonAPI  = errors.New("gopricemon api base url not set or incorrect")
-	ErrSummaryAge     = errors.New("maximum summary age not specified or incorrect")
 )
 
 type Config struct {
-	DatabaseURL           string
-	HTTPPort              int
-	EventProcessInterval  time.Duration
-	GoPriceMonAPIBaseURL  string
-	MaximumSummaryAgeSecs int
+	DatabaseURL          string
+	HTTPPort             int
+	EventProcessInterval time.Duration
+	GoPriceMonAPIBaseURL string
 }
 
 func LoadConfig() (*Config, error) {
@@ -52,17 +50,11 @@ func LoadConfig() (*Config, error) {
 	if err != nil {
 		return nil, ErrGoPriceMonAPI
 	}
-	maximumSummaryAgeSecs, err := strconv.Atoi(os.Getenv("TRADE_MAX_SUMMARY_AGE_SECONDS"))
-	if err != nil || maximumSummaryAgeSecs < 1 {
-		return nil, ErrSummaryAge
-	}
-
 	return &Config{
-		DatabaseURL:           databaseURL,
-		HTTPPort:              httpPort,
-		EventProcessInterval:  eventProcessInterval,
-		GoPriceMonAPIBaseURL:  goPriceMonAPIBaseURL,
-		MaximumSummaryAgeSecs: maximumSummaryAgeSecs,
+		DatabaseURL:          databaseURL,
+		HTTPPort:             httpPort,
+		EventProcessInterval: eventProcessInterval,
+		GoPriceMonAPIBaseURL: goPriceMonAPIBaseURL,
 	}, nil
 }
 

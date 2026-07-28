@@ -25,7 +25,7 @@ func Run(config Config) error {
 	}
 	defer repository.Close()
 
-	inboxWorker := app.NewEventsWorker(repository, config.MaximumSummaryAgeSecs)
+	inboxWorker := app.NewEventsWorker(repository)
 	taskWorker := app.NewTaskWorker(repository, gopricemon.NewClient(config.GoPriceMonAPIBaseURL))
 	router := gin.Default()
 	transport.NewHandler(inboxWorker).Register(router)
