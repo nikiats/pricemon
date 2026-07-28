@@ -16,6 +16,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
 
   dealmanager-postgres:
     image: ${DEALMANAGER_POSTGRES_IMAGE}
@@ -34,6 +35,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
 
   migrate:
     build: .
