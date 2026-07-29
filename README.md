@@ -30,6 +30,35 @@
 
 ![схема алгоритма работы dealmanager](./docs/flow-dealmanager.png)
 
+## Запуск
+
+Требования
+
+- Docker Compose
+- Go >= 1.26.1
+- Файл конфигурации `.env` по подобию `.env.example`
+
+Запуск СУБД Postgres
+
+```bash
+./up-db-only.sh
+```
+
+Запуск микросервисов без Docker Compose
+
+```bash
+go run ./cmd/migrate up # инициализация СУБД и миграции goose
+go run ./cmd/migrate-dealmanager up
+go run ./cmd/gopricemon
+go run ./cmd/dealmanager # при необходимости функционала dealmanager
+```
+
+Запуск с использованием Docker
+
+```bash
+docker compose up -d --build
+```
+
 ## Ограничения
 
 **Данный сервис является агрегатором данных и управляет задачами по покупке/продаже. Без сторонних сервисов самостоятельно парсить площадки, покупать/продавать предметы он не будет.**
