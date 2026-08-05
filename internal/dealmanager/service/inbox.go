@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"gopricemon/internal/dealmanager/domain"
+	"gopricemon/internal/dealmanager/gopricemon"
 	"gopricemon/internal/dealmanager/repository"
 )
 
@@ -16,13 +17,19 @@ const eventBatchSize = 100
 
 var ErrInvalidEvent = errors.New("invalid event")
 
-type InboxWorker struct {
-	repo repository.Repository
+type TradeSettingsClient interface {
+	GetTradeSettings() (gopricemon.TradeSettings, error)
 }
 
-func NewEventsWorker(repository repository.Repository) *InboxWorker {
+type InboxWorker struct {
+	repo   repository.Repository
+	client TradeSettingsClient
+}
+
+func NewEventsWorker(repository repository.Repository, client TradeSettingsClient) *InboxWorker {
 	return &InboxWorker{
-		repo: repository,
+		repo:   repository,
+		client: client,
 	}
 }
 
@@ -38,11 +45,16 @@ func (s *InboxWorker) ReceiveEvent(id string, payload json.RawMessage) error {
 }
 
 func (s *InboxWorker) ProcessPendingEvents() error {
-	activeTask, err := s.repo.GetActiveSequentialTask()
+	settings, err := s.client.GetTradeSettings()
 	if err != nil {
 		return err
 	}
-	if activeTask != nil {
+	activeTasks, err := s.repo.GetActiveSequentialTasks()
+	if err != nil {
+		return err
+	}
+	availableTasks := settings.MaximumConcurrentTrades - len(activeTasks)
+	if availableTasks < 1 {
 		return nil
 	}
 
@@ -98,7 +110,10 @@ func (s *InboxWorker) ProcessPendingEvents() error {
 			}
 
 			ids = append(ids, event.ID)
-			return s.repo.MarkEventsProcessed(ids)
+			availableTasks--
+			if availableTasks == 0 {
+				return s.repo.MarkEventsProcessed(ids)
+			}
 		}
 
 		if err = s.repo.MarkEventsProcessed(ids); err != nil {

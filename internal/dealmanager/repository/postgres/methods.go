@@ -82,7 +82,7 @@ func (r *Repository) GetPendingEvents(limit int) ([]domain.InboxEvent, error) {
 	return events, rows.Err()
 }
 
-func (r *Repository) GetActiveSequentialTask() (*domain.SequentialTask, error) {
+func (r *Repository) GetActiveSequentialTasks() ([]domain.SequentialTask, error) {
 	const query = `
 		SELECT
 			id, inbox_event_id::text, category_id, item_id,
@@ -90,34 +90,43 @@ func (r *Repository) GetActiveSequentialTask() (*domain.SequentialTask, error) {
 			buy_task_id, sell_task_id, status, error, created_at, updated_at
 		FROM sequential_tasks
 		WHERE status IN ('NOT STARTED', 'BUYING', 'SELLING')
-		LIMIT 1
+		ORDER BY created_at, id
 	`
 
-	var task domain.SequentialTask
-	err := r.pool.QueryRow(context.Background(), query).Scan(
-		&task.ID,
-		&task.InboxEventID,
-		&task.CategoryID,
-		&task.ItemID,
-		&task.PlatformSellID,
-		&task.PlatformBuyID,
-		&task.SellPrice,
-		&task.BuyPrice,
-		&task.BuyTaskID,
-		&task.SellTaskID,
-		&task.Status,
-		&task.Error,
-		&task.CreatedAt,
-		&task.UpdatedAt,
-	)
-	if err == pgx.ErrNoRows {
-		return nil, nil
-	}
+	rows, err := r.pool.Query(context.Background(), query)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
-	return &task, nil
+	var tasks []domain.SequentialTask
+	for rows.Next() {
+		var task domain.SequentialTask
+		if err = rows.Scan(
+			&task.ID,
+			&task.InboxEventID,
+			&task.CategoryID,
+			&task.ItemID,
+			&task.PlatformSellID,
+			&task.PlatformBuyID,
+			&task.SellPrice,
+			&task.BuyPrice,
+			&task.BuyTaskID,
+			&task.SellTaskID,
+			&task.Status,
+			&task.Error,
+			&task.CreatedAt,
+			&task.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, task)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return tasks, nil
 }
 
 func (r *Repository) GetLastFinishedAt(itemID int) (*time.Time, error) {

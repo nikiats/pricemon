@@ -23,6 +23,10 @@ type Task struct {
 	CompletedAt *time.Time `json:"completedAt"`
 }
 
+type TradeSettings struct {
+	MaximumConcurrentTrades int `json:"maximumConcurrentTrades"`
+}
+
 type Client struct {
 	baseURL    string
 	httpClient *http.Client
@@ -91,6 +95,27 @@ func (c *Client) GetTask(taskID int) (Task, error) {
 	}
 
 	return task, nil
+}
+
+func (c *Client) GetTradeSettings() (TradeSettings, error) {
+	response, err := c.httpClient.Get(c.baseURL + "/trade-settings")
+	if err != nil {
+		return TradeSettings{}, err
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return TradeSettings{}, responseError(response)
+	}
+
+	var settings TradeSettings
+	if err = json.NewDecoder(response.Body).Decode(&settings); err != nil {
+		return TradeSettings{}, err
+	}
+	if settings.MaximumConcurrentTrades < 1 {
+		return TradeSettings{}, fmt.Errorf("gopricemon: invalid maximum concurrent trades")
+	}
+
+	return settings, nil
 }
 
 func (c *Client) platformName(platformID int) (string, error) {

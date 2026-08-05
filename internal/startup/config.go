@@ -16,23 +16,25 @@ import (
 const defaultTaskLeaseMaxSeconds = 300
 
 type Config struct {
-	DatabaseURL           string
-	HTTPPort              int
-	TaskLeaseMaxSeconds   int
-	DealManagerAPIBaseURL string
-	OutboxPublishInterval time.Duration
-	MinimumProfit         decimal.Decimal
-	MaximumSummaryAgeSecs int
+	DatabaseURL             string
+	HTTPPort                int
+	TaskLeaseMaxSeconds     int
+	DealManagerAPIBaseURL   string
+	OutboxPublishInterval   time.Duration
+	MinimumProfit           decimal.Decimal
+	MaximumSummaryAgeSecs   int
+	MaximumConcurrentTrades int
 }
 
 var (
-	ErrDatabaseConfig = errors.New("database connection url not set or incorrect")
-	ErrPort           = errors.New("http server port not specified or incorrect")
-	ErrTaskLeaseMax   = errors.New("task lease max seconds incorrect")
-	ErrDealManagerAPI = errors.New("dealmanager api base url not set or incorrect")
-	ErrOutboxInterval = errors.New("outbox publish interval not specified or incorrect")
-	ErrMinimumProfit  = errors.New("minimum profit not specified or incorrect")
-	ErrSummaryAge     = errors.New("maximum summary age not specified or incorrect")
+	ErrDatabaseConfig   = errors.New("database connection url not set or incorrect")
+	ErrPort             = errors.New("http server port not specified or incorrect")
+	ErrTaskLeaseMax     = errors.New("task lease max seconds incorrect")
+	ErrDealManagerAPI   = errors.New("dealmanager api base url not set or incorrect")
+	ErrOutboxInterval   = errors.New("outbox publish interval not specified or incorrect")
+	ErrMinimumProfit    = errors.New("minimum profit not specified or incorrect")
+	ErrSummaryAge       = errors.New("maximum summary age not specified or incorrect")
+	ErrConcurrentTrades = errors.New("maximum concurrent trades not specified or incorrect")
 )
 
 func LoadConfig() (*Config, error) {
@@ -78,15 +80,20 @@ func LoadConfig() (*Config, error) {
 	if err != nil || maximumSummaryAgeSecs < 1 {
 		return nil, ErrSummaryAge
 	}
+	maximumConcurrentTrades, err := strconv.Atoi(os.Getenv("TRADE_MAX_CONCURRENT_TRADES"))
+	if err != nil || maximumConcurrentTrades < 1 {
+		return nil, ErrConcurrentTrades
+	}
 
 	return &Config{
-		DatabaseURL:           databaseURL,
-		HTTPPort:              httpPort,
-		TaskLeaseMaxSeconds:   taskLeaseMaxSeconds,
-		DealManagerAPIBaseURL: dealManagerAPIBaseURL,
-		OutboxPublishInterval: outboxPublishInterval,
-		MinimumProfit:         minimumProfit,
-		MaximumSummaryAgeSecs: maximumSummaryAgeSecs,
+		DatabaseURL:             databaseURL,
+		HTTPPort:                httpPort,
+		TaskLeaseMaxSeconds:     taskLeaseMaxSeconds,
+		DealManagerAPIBaseURL:   dealManagerAPIBaseURL,
+		OutboxPublishInterval:   outboxPublishInterval,
+		MinimumProfit:           minimumProfit,
+		MaximumSummaryAgeSecs:   maximumSummaryAgeSecs,
+		MaximumConcurrentTrades: maximumConcurrentTrades,
 	}, nil
 }
 

@@ -519,11 +519,14 @@ components:
   schemas:
     TradeSettings:
       type: object
-      required: [minimumProfit, maximumSummaryAgeSecs]
+      required: [minimumProfit, maximumSummaryAgeSecs, maximumConcurrentTrades]
       properties:
         minimumProfit:
           type: string
         maximumSummaryAgeSecs:
+          type: integer
+          minimum: 1
+        maximumConcurrentTrades:
           type: integer
           minimum: 1
     ItemSummary:

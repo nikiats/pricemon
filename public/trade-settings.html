@@ -16,7 +16,7 @@
 		label { display: grid; gap: 5px; color: #666; }
 		input { width: 100%; border: 0; border-bottom: 1px solid #bdbdbd; padding: 3px 0; font: inherit; color: #161616; outline: none; }
 		input:focus { border-color: #161616; }
-		button { justify-self: start; border: 0; background: #161616; color: #fff; padding: 5px 9px; font: inherit; cursor: pointer; }
+		button { justify-self: start; order: 1; border: 0; background: #161616; color: #fff; padding: 5px 9px; font: inherit; cursor: pointer; }
 		.status { min-height: 18px; margin: 10px 0 0; color: #666; }
 		.error { color: #a42626; }
 		@media (max-width: 640px) { body { margin-top: 24px; padding: 0 14px; } }
@@ -31,6 +31,7 @@
 		<label>Минимальная прибыль <input name="minimumProfit" inputmode="decimal" required></label>
 		<label>Максимальный возраст, с <input name="maximumSummaryAgeSecs" type="number" min="1" step="1" required></label>
 		<button>Сохранить</button>
+		<label>Максимум одновременных сделок <input name="maximumConcurrentTrades" type="number" min="1" step="1" required></label>
 	</form>
 	<p id="status" class="status" aria-live="polite"></p>
 	<script>
@@ -56,6 +57,7 @@
 			const settings = await response.json();
 			form.minimumProfit.value = settings.minimumProfit;
 			form.maximumSummaryAgeSecs.value = settings.maximumSummaryAgeSecs;
+			form.maximumConcurrentTrades.value = settings.maximumConcurrentTrades;
 		}
 
 		form.onsubmit = async event => {
@@ -66,6 +68,7 @@
 				body: JSON.stringify({
 					minimumProfit: form.minimumProfit.value,
 					maximumSummaryAgeSecs: Number(form.maximumSummaryAgeSecs.value),
+					maximumConcurrentTrades: Number(form.maximumConcurrentTrades.value),
 				}),
 			});
 			if (!response.ok) {

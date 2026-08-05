@@ -30,12 +30,22 @@ func NewTaskWorker(repo repository.Repository, client TaskClient) *TaskWorker {
 	}
 }
 
-func (s *TaskWorker) ProcessTask() error {
-	task, err := s.repo.GetActiveSequentialTask()
-	if err != nil || task == nil {
+func (s *TaskWorker) ProcessTasks() error {
+	tasks, err := s.repo.GetActiveSequentialTasks()
+	if err != nil {
 		return err
 	}
 
+	for i := range tasks {
+		if err = s.processTask(&tasks[i]); err != nil {
+			log.Printf("dealmanager task worker: task=%d: %v", tasks[i].ID, err)
+		}
+	}
+
+	return nil
+}
+
+func (s *TaskWorker) processTask(task *domain.SequentialTask) error {
 	switch task.Status {
 	case domain.SequentialTaskStatusNotStarted:
 		return s.startBuying(task)
@@ -57,7 +67,7 @@ func (s *TaskWorker) RunTaskWorker(ctx context.Context, interval time.Duration) 
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if err := s.ProcessTask(); err != nil {
+			if err := s.ProcessTasks(); err != nil {
 				log.Printf("dealmanager task worker: %v", err)
 			}
 		}

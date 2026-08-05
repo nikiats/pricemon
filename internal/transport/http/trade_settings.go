@@ -12,8 +12,9 @@ import (
 )
 
 type tradeSettingsResponse struct {
-	MinimumProfit         decimal.Decimal `json:"minimumProfit"`
-	MaximumSummaryAgeSecs int             `json:"maximumSummaryAgeSecs"`
+	MinimumProfit           decimal.Decimal `json:"minimumProfit"`
+	MaximumSummaryAgeSecs   int             `json:"maximumSummaryAgeSecs"`
+	MaximumConcurrentTrades int             `json:"maximumConcurrentTrades"`
 }
 
 func (h *Handler) getTradeSettings(c *gin.Context) {
@@ -25,15 +26,17 @@ func (h *Handler) getTradeSettings(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, tradeSettingsResponse{
-		MinimumProfit:         settings.MinimumProfit,
-		MaximumSummaryAgeSecs: settings.MaximumSummaryAgeSecs,
+		MinimumProfit:           settings.MinimumProfit,
+		MaximumSummaryAgeSecs:   settings.MaximumSummaryAgeSecs,
+		MaximumConcurrentTrades: settings.MaximumConcurrentTrades,
 	})
 }
 
 func (h *Handler) setTradeSettings(c *gin.Context) {
 	var request struct {
-		MinimumProfit         string `json:"minimumProfit"`
-		MaximumSummaryAgeSecs int    `json:"maximumSummaryAgeSecs"`
+		MinimumProfit           string `json:"minimumProfit"`
+		MaximumSummaryAgeSecs   int    `json:"maximumSummaryAgeSecs"`
+		MaximumConcurrentTrades int    `json:"maximumConcurrentTrades"`
 	}
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
@@ -45,8 +48,8 @@ func (h *Handler) setTradeSettings(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid minimum profit"})
 		return
 	}
-	if err = h.service.SetTradeSettings(minimumProfit, request.MaximumSummaryAgeSecs); err != nil {
-		if errors.Is(err, service.ErrInvalidMinimumProfit) || errors.Is(err, service.ErrInvalidSummaryAge) {
+	if err = h.service.SetTradeSettings(minimumProfit, request.MaximumSummaryAgeSecs, request.MaximumConcurrentTrades); err != nil {
+		if errors.Is(err, service.ErrInvalidMinimumProfit) || errors.Is(err, service.ErrInvalidSummaryAge) || errors.Is(err, service.ErrInvalidConcurrentTrades) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}

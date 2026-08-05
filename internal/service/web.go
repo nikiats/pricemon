@@ -11,18 +11,19 @@ import (
 )
 
 var (
-	ErrInvalidCategoryID     = errors.New("invalid category ID")
-	ErrInvalidPagination     = errors.New("invalid pagination")
-	ErrInvalidPlatformID     = errors.New("invalid platform ID")
-	ErrInvalidPlatformName   = errors.New("invalid platform name")
-	ErrPlatformAlreadyExists = errors.New("platform already exists")
-	ErrPlatformNotFound      = errors.New("platform not found")
-	ErrInvalidExecutorID     = errors.New("invalid executor ID")
-	ErrInvalidExecutorName   = errors.New("invalid executor name")
-	ErrExecutorAlreadyExists = errors.New("executor already exists")
-	ErrExecutorNotFound      = errors.New("executor not found")
-	ErrInvalidMinimumProfit  = errors.New("invalid minimum profit")
-	ErrInvalidSummaryAge     = errors.New("invalid maximum summary age")
+	ErrInvalidCategoryID       = errors.New("invalid category ID")
+	ErrInvalidPagination       = errors.New("invalid pagination")
+	ErrInvalidPlatformID       = errors.New("invalid platform ID")
+	ErrInvalidPlatformName     = errors.New("invalid platform name")
+	ErrPlatformAlreadyExists   = errors.New("platform already exists")
+	ErrPlatformNotFound        = errors.New("platform not found")
+	ErrInvalidExecutorID       = errors.New("invalid executor ID")
+	ErrInvalidExecutorName     = errors.New("invalid executor name")
+	ErrExecutorAlreadyExists   = errors.New("executor already exists")
+	ErrExecutorNotFound        = errors.New("executor not found")
+	ErrInvalidMinimumProfit    = errors.New("invalid minimum profit")
+	ErrInvalidSummaryAge       = errors.New("invalid maximum summary age")
+	ErrInvalidConcurrentTrades = errors.New("invalid maximum concurrent trades")
 )
 
 type Service struct {
@@ -66,26 +67,32 @@ func (s *Service) GetInventory() ([]domain.InventorySummary, error) {
 	return s.repo.GetInventory()
 }
 
-func (s *Service) SetTradeSettings(minimumProfit decimal.Decimal, maximumSummaryAgeSecs int) error {
+func (s *Service) SetTradeSettings(minimumProfit decimal.Decimal, maximumSummaryAgeSecs, maximumConcurrentTrades int) error {
 	if minimumProfit.IsNegative() {
 		return ErrInvalidMinimumProfit
 	}
 	if maximumSummaryAgeSecs < 1 {
 		return ErrInvalidSummaryAge
 	}
+	if maximumConcurrentTrades < 1 {
+		return ErrInvalidConcurrentTrades
+	}
 
-	return s.repo.SetTradeSettings(minimumProfit, maximumSummaryAgeSecs)
+	return s.repo.SetTradeSettings(minimumProfit, maximumSummaryAgeSecs, maximumConcurrentTrades)
 }
 
-func (s *Service) InitializeTradeSettings(minimumProfit decimal.Decimal, maximumSummaryAgeSecs int) error {
+func (s *Service) InitializeTradeSettings(minimumProfit decimal.Decimal, maximumSummaryAgeSecs, maximumConcurrentTrades int) error {
 	if minimumProfit.IsNegative() {
 		return ErrInvalidMinimumProfit
 	}
 	if maximumSummaryAgeSecs < 1 {
 		return ErrInvalidSummaryAge
 	}
+	if maximumConcurrentTrades < 1 {
+		return ErrInvalidConcurrentTrades
+	}
 
-	return s.repo.InitializeTradeSettings(minimumProfit, maximumSummaryAgeSecs)
+	return s.repo.InitializeTradeSettings(minimumProfit, maximumSummaryAgeSecs, maximumConcurrentTrades)
 }
 
 func (s *Service) GetTradeSettings() (domain.TradeSettings, error) {

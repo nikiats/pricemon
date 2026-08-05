@@ -46,6 +46,6 @@ type Repository interface {
 	MarkOutboxMessageProcessed(id string) error
 	MarkOutboxMessageFailed(id, message string) error
 	GetTradeSettings() (domain.TradeSettings, error)
-	InitializeTradeSettings(minimumProfit decimal.Decimal, maximumSummaryAgeSecs int) error
-	SetTradeSettings(minimumProfit decimal.Decimal, maximumSummaryAgeSecs int) error
+	InitializeTradeSettings(minimumProfit decimal.Decimal, maximumSummaryAgeSecs, maximumConcurrentTrades int) error
+	SetTradeSettings(minimumProfit decimal.Decimal, maximumSummaryAgeSecs, maximumConcurrentTrades int) error
 }
