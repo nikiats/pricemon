@@ -58,10 +58,13 @@ func (s *InboxWorker) ProcessPendingEvents() error {
 		return nil
 	}
 
-	for {
+	for availableTasks > 0 {
 		events, err := s.repo.GetPendingEvents(eventBatchSize)
 		if err != nil {
 			return err
+		}
+		if len(events) == 0 {
+			return nil
 		}
 
 		ids := make([]string, 0, len(events))
@@ -71,48 +74,23 @@ func (s *InboxWorker) ProcessPendingEvents() error {
 				return err
 			}
 
-			now := time.Now()
-			if !payload.ExpiresAt.After(payload.ActualAt) || !now.Before(payload.ExpiresAt) {
-				ids = append(ids, event.ID)
-				continue
-			}
-			lastFinishedAt, err := s.repo.GetLastFinishedAt(payload.ItemID)
+			actual, err := s.isActualTrade(payload, time.Now())
 			if err != nil {
 				return err
 			}
-			if lastFinishedAt != nil && (now.Before(lastFinishedAt.Add(payload.ExpiresAt.Sub(payload.ActualAt))) || !payload.ActualAt.After(*lastFinishedAt)) {
+			if !actual {
 				ids = append(ids, event.ID)
 				continue
 			}
 
-			task := domain.SequentialTask{
-				InboxEventID:   event.ID,
-				CategoryID:     payload.CategoryID,
-				ItemID:         payload.ItemID,
-				PlatformSellID: payload.PlatformSellID,
-				PlatformBuyID:  payload.PlatformBuyID,
-				SellPrice:      payload.SellPrice,
-				BuyPrice:       payload.BuyPrice,
-				Status:         domain.SequentialTaskStatusNotStarted,
-			}
-			item, err := s.repo.GetAvailableUnboundItem(payload.ItemID, payload.BuyPrice)
-			if err != nil {
-				return err
-			}
-			if item != nil {
-				task.Status = domain.SequentialTaskStatusSelling
-				err = s.repo.CreateSellingSequentialTask(task, item.ID)
-			} else {
-				err = s.repo.CreateSequentialTask(task)
-			}
-			if err != nil {
+			if err = s.createTrade(event.ID, payload); err != nil {
 				return err
 			}
 
 			ids = append(ids, event.ID)
 			availableTasks--
 			if availableTasks == 0 {
-				return s.repo.MarkEventsProcessed(ids)
+				break
 			}
 		}
 
@@ -123,6 +101,49 @@ func (s *InboxWorker) ProcessPendingEvents() error {
 			return nil
 		}
 	}
+
+	return nil
+}
+
+func (s *InboxWorker) isActualTrade(payload domain.ItemSummaryPayload, now time.Time) (bool, error) {
+	if !payload.ExpiresAt.After(payload.ActualAt) || !payload.ExpiresAt.After(now) {
+		return false, nil
+	}
+
+	lastFinishedAt, err := s.repo.GetLastFinishedAt(payload.ItemID)
+	if err != nil {
+		return false, err
+	}
+	if lastFinishedAt == nil {
+		return true, nil
+	}
+
+	maximumAge := payload.ExpiresAt.Sub(payload.ActualAt)
+	finishedAgo := now.Sub(*lastFinishedAt)
+	return payload.ActualAt.After(*lastFinishedAt) && finishedAgo >= maximumAge, nil
+}
+
+func (s *InboxWorker) createTrade(inboxEventID string, payload domain.ItemSummaryPayload) error {
+	task := domain.SequentialTask{
+		InboxEventID:   inboxEventID,
+		CategoryID:     payload.CategoryID,
+		ItemID:         payload.ItemID,
+		PlatformSellID: payload.PlatformSellID,
+		PlatformBuyID:  payload.PlatformBuyID,
+		SellPrice:      payload.SellPrice,
+		BuyPrice:       payload.BuyPrice,
+		Status:         domain.SequentialTaskStatusNotStarted,
+	}
+	item, err := s.repo.GetAvailableUnboundItem(payload.ItemID, payload.BuyPrice)
+	if err != nil {
+		return err
+	}
+	if item == nil {
+		return s.repo.CreateSequentialTask(task)
+	}
+
+	task.Status = domain.SequentialTaskStatusSelling
+	return s.repo.CreateSellingSequentialTask(task, item.ID)
 }
 
 func (s *InboxWorker) RunEventWorker(ctx context.Context, interval time.Duration) {
