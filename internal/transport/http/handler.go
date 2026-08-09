@@ -36,6 +36,7 @@ type Service interface {
 	GetTask(taskID int) (domain.TaskInfo, error)
 	CreateTask(itemID int, platformName, actionType, price, taskKey string) (domain.TaskInfo, error)
 	DeleteTask(taskID int) error
+	ResetActiveTasks() error
 }
 
 type Handler struct {
@@ -59,6 +60,7 @@ func (h *Handler) Register(router *gin.Engine) {
 	router.GET("/", h.indexPage)
 	router.GET("/summary", h.summaryPage)
 	router.GET("/sequential-tasks", h.sequentialTasksPageOrJSON)
+	router.POST("/sequential-tasks/reset", h.resetSequentialTasks)
 	router.GET("/trade-settings", h.tradeSettingsPageOrJSON)
 	router.PUT("/trade-settings", h.setTradeSettings)
 	router.PUT("/offers", h.setOffer)

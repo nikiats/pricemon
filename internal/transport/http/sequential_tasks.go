@@ -101,3 +101,32 @@ func (h *Handler) getSequentialTasks(c *gin.Context) {
 
 	c.JSON(http.StatusOK, sequentialTasksPageResponse{Items: items, NextOffset: page.NextOffset})
 }
+
+func (h *Handler) resetSequentialTasks(c *gin.Context) {
+	if err := h.service.ResetActiveTasks(); err != nil {
+		_ = c.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+
+	request, err := http.NewRequestWithContext(c.Request.Context(), http.MethodPost, h.dealManagerAPIBaseURL+"/sequential-tasks/reset", nil)
+	if err != nil {
+		_ = c.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
+	}
+	response, err := h.client.Do(request)
+	if err != nil {
+		_ = c.Error(err)
+		c.JSON(http.StatusBadGateway, gin.H{"error": "dealmanager is unavailable"})
+		return
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusNoContent {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "dealmanager reset failed"})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}

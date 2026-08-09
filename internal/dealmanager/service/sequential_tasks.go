@@ -5,6 +5,8 @@ import (
 	"gopricemon/internal/dealmanager/repository"
 )
 
+const userResetError = "пользовательский сброс"
+
 type SequentialTasksService struct {
 	repo repository.Repository
 }
@@ -42,4 +44,8 @@ func (s *SequentialTasksService) GetSequentialTasks(offset, limit int) (domain.S
 	}
 
 	return page, nil
+}
+
+func (s *SequentialTasksService) ResetActiveSequentialTasks() error {
+	return s.repo.ResetActiveSequentialTasks(userResetError)
 }

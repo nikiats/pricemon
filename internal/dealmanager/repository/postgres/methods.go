@@ -168,6 +168,23 @@ func (r *Repository) GetSequentialTasks(offset, limit int) ([]domain.SequentialT
 	return tasks, rows.Err()
 }
 
+func (r *Repository) ResetActiveSequentialTasks(message string) error {
+	const query = `
+		WITH reset_tasks AS (
+			UPDATE sequential_tasks
+			SET status = 'FAILED', error = $1, finished_at = NOW(), updated_at = NOW()
+			WHERE status IN ('NOT STARTED', 'BUYING', 'SELLING')
+			RETURNING id
+		)
+		UPDATE unbound_items
+		SET sequential_task_id = NULL
+		WHERE sold = FALSE AND sequential_task_id IN (SELECT id FROM reset_tasks)
+	`
+
+	_, err := r.pool.Exec(context.Background(), query, message)
+	return err
+}
+
 func (r *Repository) GetLastFinishedAt(itemID int) (*time.Time, error) {
 	const query = `
 		SELECT finished_at

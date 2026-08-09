@@ -12,6 +12,7 @@
 		h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.04em; }
 		.home-link { background: #161616; color: #fff; padding: 5px 9px; font: inherit; line-height: 1.2; text-decoration: none; }
 		.home-link:hover, button:hover { background: #444; }
+		.actions { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; }
 		.table-wrap { overflow-x: auto; border-top: 1px solid #161616; }
 		table { width: 100%; min-width: 850px; border-collapse: collapse; }
 		th, td { padding: 7px 10px; border-bottom: 1px solid #e7e7e7; text-align: left; line-height: 1.2; vertical-align: top; }
@@ -21,6 +22,10 @@
 		.completed { color: #19723b; }
 		.status { min-height: 18px; margin: 10px 0 0; color: #666; }
 		button { border: 0; background: #161616; color: #fff; padding: 5px 9px; font: inherit; cursor: pointer; }
+		button.reset { background: #a42626; }
+		button.reset:hover { background: #7d1c1c; }
+		button:disabled { cursor: default; opacity: .6; }
+		.help { color: #666; cursor: help; }
 		@media (max-width: 640px) { body { margin-top: 24px; padding: 0 14px; } }
 	</style>
 </head>
@@ -29,6 +34,10 @@
 		<a class="home-link" href="/">← Назад</a>
 		<h1>Последовательные задачи</h1>
 	</header>
+	<div class="actions">
+		<button id="reset" class="reset" type="button">Полная перезагрузка</button>
+		<span class="help" title="Все, в том числе начатые трейды, будут остановлены, а связанные с ними задания отмечены как неудачные.">?</span>
+	</div>
 	<div class="table-wrap">
 		<table>
 			<thead><tr><th>ID предмета</th><th>Покупка</th><th>Продажа</th><th>Статус</th><th>Создано</th><th>Завершено</th></tr></thead>
@@ -41,6 +50,7 @@
 		const body = document.querySelector('#tasks');
 		const status = document.querySelector('#status');
 		const more = document.querySelector('#more');
+		const reset = document.querySelector('#reset');
 		const pageSize = 50;
 		let nextOffset = 0;
 		let loading = false;
@@ -112,7 +122,24 @@
 			}
 		}
 
+		async function resetTasks() {
+			if (!confirm('Все активные трейды и задания будут отмечены как неудачные. Продолжить?')) return;
+			reset.disabled = true;
+			try {
+				const response = await fetch('/sequential-tasks/reset', { method: 'POST' });
+				if (!response.ok) throw new Error('request failed');
+				body.replaceChildren();
+				nextOffset = 0;
+				await load();
+			} catch {
+				status.textContent = 'Не удалось перезагрузить задачи';
+			} finally {
+				reset.disabled = false;
+			}
+		}
+
 		more.onclick = load;
+		reset.onclick = resetTasks;
 		load();
 	</script>
 </body>

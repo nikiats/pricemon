@@ -17,6 +17,7 @@ type InboxService interface {
 
 type SequentialTasksService interface {
 	GetSequentialTasks(offset, limit int) (domain.SequentialTaskPage, error)
+	ResetActiveSequentialTasks() error
 }
 
 type Handler struct {
@@ -31,6 +32,7 @@ func NewHandler(inboxService InboxService, sequentialTasksService SequentialTask
 func (h *Handler) Register(router *gin.Engine) {
 	router.POST("/event/item-summary", h.receiveItemSummaryEvent)
 	router.GET("/sequential-tasks", h.getSequentialTasks)
+	router.POST("/sequential-tasks/reset", h.resetSequentialTasks)
 }
 
 func (h *Handler) receiveItemSummaryEvent(c *gin.Context) {

@@ -32,6 +32,8 @@ var (
 	ErrInvalidTaskPrice       = errors.New("price must be a positive number")
 )
 
+const userResetError = "пользовательский сброс"
+
 func (s *Service) ClaimTask(platformID int, executorToken string) (domain.Task, bool, error) {
 	if platformID < 1 {
 		return domain.Task{}, false, ErrInvalidPlatformID
@@ -105,6 +107,10 @@ func (s *Service) DeleteTask(taskID int) error {
 	}
 
 	return nil
+}
+
+func (s *Service) ResetActiveTasks() error {
+	return s.repo.ResetActiveTasks(userResetError)
 }
 
 func (s *Service) ExtendTaskLease(taskID int, leaseToken string, leaseSeconds int, executorToken string) (time.Time, error) {

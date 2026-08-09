@@ -288,3 +288,19 @@ func (r *Repository) DeleteTask(taskID int) (bool, error) {
 
 	return result.RowsAffected() > 0, nil
 }
+
+func (r *Repository) ResetActiveTasks(message string) error {
+	const query = `
+		UPDATE tasks
+		SET
+			status = 'failed',
+			error = $1,
+			completed_at = NOW(),
+			lease_token = NULL,
+			lease_until = NULL
+		WHERE status IN ('not started', 'in progress')
+	`
+
+	_, err := r.pool.Exec(context.Background(), query, message)
+	return err
+}
