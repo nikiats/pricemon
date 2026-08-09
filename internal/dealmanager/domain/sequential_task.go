@@ -31,4 +31,23 @@ type SequentialTask struct {
 	Error          *string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+	FinishedAt     *time.Time
+}
+
+type SequentialTaskInfo struct {
+	ID                 int
+	ItemID             int
+	PurchasePlatformID int
+	PurchasePrice      decimal.Decimal
+	SalePlatformID     int
+	SalePrice          decimal.Decimal
+	Status             SequentialTaskStatus
+	Error              *string
+	CreatedAt          time.Time
+	FinishedAt         *time.Time
+}
+
+type SequentialTaskPage struct {
+	Items      []SequentialTaskInfo
+	NextOffset *int
 }

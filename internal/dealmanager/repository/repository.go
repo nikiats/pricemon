@@ -12,6 +12,7 @@ type Repository interface {
 	CreateInboxEvent(event domain.InboxEvent) error
 	GetPendingEvents(limit int) ([]domain.InboxEvent, error)
 	GetActiveSequentialTasks() ([]domain.SequentialTask, error)
+	GetSequentialTasks(offset, limit int) ([]domain.SequentialTask, error)
 	GetLastFinishedAt(itemID int) (*time.Time, error)
 	CreateSequentialTask(task domain.SequentialTask) error
 	CreateSellingSequentialTask(task domain.SequentialTask, unboundItemID int) error

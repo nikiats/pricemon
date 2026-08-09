@@ -7,23 +7,30 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"gopricemon/internal/dealmanager/domain"
 	app "gopricemon/internal/dealmanager/service"
 )
 
-type Service interface {
+type InboxService interface {
 	ReceiveEvent(id string, payload json.RawMessage) error
 }
 
-type Handler struct {
-	service Service
+type SequentialTasksService interface {
+	GetSequentialTasks(offset, limit int) (domain.SequentialTaskPage, error)
 }
 
-func NewHandler(service Service) *Handler {
-	return &Handler{service: service}
+type Handler struct {
+	inboxService           InboxService
+	sequentialTasksService SequentialTasksService
+}
+
+func NewHandler(inboxService InboxService, sequentialTasksService SequentialTasksService) *Handler {
+	return &Handler{inboxService: inboxService, sequentialTasksService: sequentialTasksService}
 }
 
 func (h *Handler) Register(router *gin.Engine) {
 	router.POST("/event/item-summary", h.receiveItemSummaryEvent)
+	router.GET("/sequential-tasks", h.getSequentialTasks)
 }
 
 func (h *Handler) receiveItemSummaryEvent(c *gin.Context) {
@@ -36,7 +43,7 @@ func (h *Handler) receiveItemSummaryEvent(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.ReceiveEvent(request.ID, request.Payload); err != nil {
+	if err := h.inboxService.ReceiveEvent(request.ID, request.Payload); err != nil {
 		if errors.Is(err, app.ErrInvalidEvent) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return

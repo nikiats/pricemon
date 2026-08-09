@@ -58,6 +58,17 @@ func (h *Handler) summaryPage(c *gin.Context) {
 	c.File("public/summary.html")
 }
 
+func (h *Handler) sequentialTasksPageOrJSON(c *gin.Context) {
+	c.Header("Vary", "Accept")
+
+	if strings.Contains(c.GetHeader("Accept"), "text/html") {
+		c.File("public/sequential-tasks.html")
+		return
+	}
+
+	h.getSequentialTasks(c)
+}
+
 func (h *Handler) tradeSettingsPageOrJSON(c *gin.Context) {
 	c.Header("Vary", "Accept")
 

@@ -33,6 +33,7 @@ func Run(config Config) error {
 	router := gin.Default()
 	transport.NewHandler(
 		application,
+		config.DealManagerAPIBaseURL,
 	).Register(router)
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", config.HTTPPort),

@@ -28,8 +28,9 @@ func Run(config Config) error {
 	client := gopricemon.NewClient(config.GoPriceMonAPIBaseURL)
 	inboxWorker := app.NewEventsWorker(repository, client)
 	taskWorker := app.NewTaskWorker(repository, client)
+	sequentialTasksService := app.NewSequentialTasksService(repository)
 	router := gin.Default()
-	transport.NewHandler(inboxWorker).Register(router)
+	transport.NewHandler(inboxWorker, sequentialTasksService).Register(router)
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", config.HTTPPort),

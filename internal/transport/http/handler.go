@@ -39,11 +39,17 @@ type Service interface {
 }
 
 type Handler struct {
-	service Service
+	service               Service
+	dealManagerAPIBaseURL string
+	client                *http.Client
 }
 
-func NewHandler(service Service) *Handler {
-	return &Handler{service: service}
+func NewHandler(service Service, dealManagerAPIBaseURL string) *Handler {
+	return &Handler{
+		service:               service,
+		dealManagerAPIBaseURL: dealManagerAPIBaseURL,
+		client:                &http.Client{Timeout: 10 * time.Second},
+	}
 }
 
 func (h *Handler) Register(router *gin.Engine) {
@@ -52,6 +58,7 @@ func (h *Handler) Register(router *gin.Engine) {
 	router.GET("/categories/:categoryID/summary", h.getSummary)
 	router.GET("/", h.indexPage)
 	router.GET("/summary", h.summaryPage)
+	router.GET("/sequential-tasks", h.sequentialTasksPageOrJSON)
 	router.GET("/trade-settings", h.tradeSettingsPageOrJSON)
 	router.PUT("/trade-settings", h.setTradeSettings)
 	router.PUT("/offers", h.setOffer)

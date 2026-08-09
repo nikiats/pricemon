@@ -129,6 +129,45 @@ func (r *Repository) GetActiveSequentialTasks() ([]domain.SequentialTask, error)
 	return tasks, nil
 }
 
+func (r *Repository) GetSequentialTasks(offset, limit int) ([]domain.SequentialTask, error) {
+	const query = `
+		SELECT
+			id, item_id, platform_sell_id, platform_buy_id, sell_price, buy_price,
+			status, error, created_at, finished_at
+		FROM sequential_tasks
+		ORDER BY created_at DESC, id DESC
+		OFFSET $1 LIMIT $2
+	`
+
+	rows, err := r.pool.Query(context.Background(), query, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tasks []domain.SequentialTask
+	for rows.Next() {
+		var task domain.SequentialTask
+		if err = rows.Scan(
+			&task.ID,
+			&task.ItemID,
+			&task.PlatformSellID,
+			&task.PlatformBuyID,
+			&task.SellPrice,
+			&task.BuyPrice,
+			&task.Status,
+			&task.Error,
+			&task.CreatedAt,
+			&task.FinishedAt,
+		); err != nil {
+			return nil, err
+		}
+		tasks = append(tasks, task)
+	}
+
+	return tasks, rows.Err()
+}
+
 func (r *Repository) GetLastFinishedAt(itemID int) (*time.Time, error) {
 	const query = `
 		SELECT finished_at
