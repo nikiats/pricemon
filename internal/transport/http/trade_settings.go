@@ -13,6 +13,7 @@ import (
 
 type tradeSettingsResponse struct {
 	MinimumProfit           decimal.Decimal `json:"minimumProfit"`
+	MaximumBuyPrice         decimal.Decimal `json:"maximumBuyPrice"`
 	MaximumSummaryAgeSecs   int             `json:"maximumSummaryAgeSecs"`
 	MaximumConcurrentTrades int             `json:"maximumConcurrentTrades"`
 }
@@ -27,6 +28,7 @@ func (h *Handler) getTradeSettings(c *gin.Context) {
 
 	c.JSON(http.StatusOK, tradeSettingsResponse{
 		MinimumProfit:           settings.MinimumProfit,
+		MaximumBuyPrice:         settings.MaximumBuyPrice,
 		MaximumSummaryAgeSecs:   settings.MaximumSummaryAgeSecs,
 		MaximumConcurrentTrades: settings.MaximumConcurrentTrades,
 	})
@@ -35,6 +37,7 @@ func (h *Handler) getTradeSettings(c *gin.Context) {
 func (h *Handler) setTradeSettings(c *gin.Context) {
 	var request struct {
 		MinimumProfit           string `json:"minimumProfit"`
+		MaximumBuyPrice         string `json:"maximumBuyPrice"`
 		MaximumSummaryAgeSecs   int    `json:"maximumSummaryAgeSecs"`
 		MaximumConcurrentTrades int    `json:"maximumConcurrentTrades"`
 	}
@@ -48,8 +51,13 @@ func (h *Handler) setTradeSettings(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid minimum profit"})
 		return
 	}
-	if err = h.service.SetTradeSettings(minimumProfit, request.MaximumSummaryAgeSecs, request.MaximumConcurrentTrades); err != nil {
-		if errors.Is(err, service.ErrInvalidMinimumProfit) || errors.Is(err, service.ErrInvalidSummaryAge) || errors.Is(err, service.ErrInvalidConcurrentTrades) {
+	maximumBuyPrice, err := decimal.NewFromString(strings.TrimSpace(request.MaximumBuyPrice))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid maximum buy price"})
+		return
+	}
+	if err = h.service.SetTradeSettings(minimumProfit, maximumBuyPrice, request.MaximumSummaryAgeSecs, request.MaximumConcurrentTrades); err != nil {
+		if errors.Is(err, service.ErrInvalidMinimumProfit) || errors.Is(err, service.ErrInvalidMaximumBuyPrice) || errors.Is(err, service.ErrInvalidSummaryAge) || errors.Is(err, service.ErrInvalidConcurrentTrades) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}

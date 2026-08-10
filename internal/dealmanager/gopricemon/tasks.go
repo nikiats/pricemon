@@ -24,7 +24,8 @@ type Task struct {
 }
 
 type TradeSettings struct {
-	MaximumConcurrentTrades int `json:"maximumConcurrentTrades"`
+	MaximumConcurrentTrades int             `json:"maximumConcurrentTrades"`
+	MaximumBuyPrice         decimal.Decimal `json:"maximumBuyPrice"`
 }
 
 type Client struct {
@@ -113,6 +114,9 @@ func (c *Client) GetTradeSettings() (TradeSettings, error) {
 	}
 	if settings.MaximumConcurrentTrades < 1 {
 		return TradeSettings{}, fmt.Errorf("gopricemon: invalid maximum concurrent trades")
+	}
+	if settings.MaximumBuyPrice.LessThanOrEqual(decimal.Zero) {
+		return TradeSettings{}, fmt.Errorf("gopricemon: invalid maximum buy price")
 	}
 
 	return settings, nil

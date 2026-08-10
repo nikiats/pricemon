@@ -66,36 +66,37 @@ func (r *Repository) MarkOutboxMessageFailed(id, message string) error {
 }
 
 func (r *Repository) GetTradeSettings() (domain.TradeSettings, error) {
-	const query = `SELECT minimum_profit, maximum_summary_age_secs, maximum_concurrent_trades FROM trade_settings WHERE id = TRUE`
+	const query = `SELECT minimum_profit, maximum_buy_price, maximum_summary_age_secs, maximum_concurrent_trades FROM trade_settings WHERE id = TRUE`
 
 	var settings domain.TradeSettings
-	err := r.pool.QueryRow(context.Background(), query).Scan(&settings.MinimumProfit, &settings.MaximumSummaryAgeSecs, &settings.MaximumConcurrentTrades)
+	err := r.pool.QueryRow(context.Background(), query).Scan(&settings.MinimumProfit, &settings.MaximumBuyPrice, &settings.MaximumSummaryAgeSecs, &settings.MaximumConcurrentTrades)
 	return settings, err
 }
 
-func (r *Repository) InitializeTradeSettings(minimumProfit decimal.Decimal, maximumSummaryAgeSecs, maximumConcurrentTrades int) error {
+func (r *Repository) InitializeTradeSettings(minimumProfit, maximumBuyPrice decimal.Decimal, maximumSummaryAgeSecs, maximumConcurrentTrades int) error {
 	const query = `
-		INSERT INTO trade_settings (id, minimum_profit, maximum_summary_age_secs, maximum_concurrent_trades)
-		VALUES (TRUE, $1, $2, $3)
+		INSERT INTO trade_settings (id, minimum_profit, maximum_buy_price, maximum_summary_age_secs, maximum_concurrent_trades)
+		VALUES (TRUE, $1, $2, $3, $4)
 		ON CONFLICT (id) DO NOTHING
 	`
 
-	_, err := r.pool.Exec(context.Background(), query, minimumProfit, maximumSummaryAgeSecs, maximumConcurrentTrades)
+	_, err := r.pool.Exec(context.Background(), query, minimumProfit, maximumBuyPrice, maximumSummaryAgeSecs, maximumConcurrentTrades)
 	return err
 }
 
-func (r *Repository) SetTradeSettings(minimumProfit decimal.Decimal, maximumSummaryAgeSecs, maximumConcurrentTrades int) error {
+func (r *Repository) SetTradeSettings(minimumProfit, maximumBuyPrice decimal.Decimal, maximumSummaryAgeSecs, maximumConcurrentTrades int) error {
 	const query = `
-		INSERT INTO trade_settings (id, minimum_profit, maximum_summary_age_secs, maximum_concurrent_trades)
-		VALUES (TRUE, $1, $2, $3)
+		INSERT INTO trade_settings (id, minimum_profit, maximum_buy_price, maximum_summary_age_secs, maximum_concurrent_trades)
+		VALUES (TRUE, $1, $2, $3, $4)
 		ON CONFLICT (id) DO UPDATE
 		SET
 			minimum_profit = EXCLUDED.minimum_profit,
+			maximum_buy_price = EXCLUDED.maximum_buy_price,
 			maximum_summary_age_secs = EXCLUDED.maximum_summary_age_secs,
 			maximum_concurrent_trades = EXCLUDED.maximum_concurrent_trades,
 			updated_at = NOW()
 	`
 
-	_, err := r.pool.Exec(context.Background(), query, minimumProfit, maximumSummaryAgeSecs, maximumConcurrentTrades)
+	_, err := r.pool.Exec(context.Background(), query, minimumProfit, maximumBuyPrice, maximumSummaryAgeSecs, maximumConcurrentTrades)
 	return err
 }

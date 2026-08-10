@@ -22,6 +22,7 @@ type Config struct {
 	DealManagerAPIBaseURL   string
 	OutboxPublishInterval   time.Duration
 	MinimumProfit           decimal.Decimal
+	MaximumBuyPrice         decimal.Decimal
 	MaximumSummaryAgeSecs   int
 	MaximumConcurrentTrades int
 }
@@ -33,6 +34,7 @@ var (
 	ErrDealManagerAPI   = errors.New("dealmanager api base url not set or incorrect")
 	ErrOutboxInterval   = errors.New("outbox publish interval not specified or incorrect")
 	ErrMinimumProfit    = errors.New("minimum profit not specified or incorrect")
+	ErrMaximumBuyPrice  = errors.New("maximum buy price not specified or incorrect")
 	ErrSummaryAge       = errors.New("maximum summary age not specified or incorrect")
 	ErrConcurrentTrades = errors.New("maximum concurrent trades not specified or incorrect")
 )
@@ -76,6 +78,10 @@ func LoadConfig() (*Config, error) {
 	if err != nil || minimumProfit.IsNegative() {
 		return nil, ErrMinimumProfit
 	}
+	maximumBuyPrice, err := decimal.NewFromString(os.Getenv("TRADE_MAX_BUY_PRICE"))
+	if err != nil || maximumBuyPrice.LessThanOrEqual(decimal.Zero) {
+		return nil, ErrMaximumBuyPrice
+	}
 	maximumSummaryAgeSecs, err := strconv.Atoi(os.Getenv("TRADE_MAX_SUMMARY_AGE_SECONDS"))
 	if err != nil || maximumSummaryAgeSecs < 1 {
 		return nil, ErrSummaryAge
@@ -92,6 +98,7 @@ func LoadConfig() (*Config, error) {
 		DealManagerAPIBaseURL:   dealManagerAPIBaseURL,
 		OutboxPublishInterval:   outboxPublishInterval,
 		MinimumProfit:           minimumProfit,
+		MaximumBuyPrice:         maximumBuyPrice,
 		MaximumSummaryAgeSecs:   maximumSummaryAgeSecs,
 		MaximumConcurrentTrades: maximumConcurrentTrades,
 	}, nil

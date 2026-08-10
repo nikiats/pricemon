@@ -22,6 +22,7 @@ var (
 	ErrExecutorAlreadyExists   = errors.New("executor already exists")
 	ErrExecutorNotFound        = errors.New("executor not found")
 	ErrInvalidMinimumProfit    = errors.New("invalid minimum profit")
+	ErrInvalidMaximumBuyPrice  = errors.New("invalid maximum buy price")
 	ErrInvalidSummaryAge       = errors.New("invalid maximum summary age")
 	ErrInvalidConcurrentTrades = errors.New("invalid maximum concurrent trades")
 )
@@ -67,9 +68,12 @@ func (s *Service) GetInventory() ([]domain.InventorySummary, error) {
 	return s.repo.GetInventory()
 }
 
-func (s *Service) SetTradeSettings(minimumProfit decimal.Decimal, maximumSummaryAgeSecs, maximumConcurrentTrades int) error {
+func (s *Service) SetTradeSettings(minimumProfit, maximumBuyPrice decimal.Decimal, maximumSummaryAgeSecs, maximumConcurrentTrades int) error {
 	if minimumProfit.IsNegative() {
 		return ErrInvalidMinimumProfit
+	}
+	if maximumBuyPrice.LessThanOrEqual(decimal.Zero) {
+		return ErrInvalidMaximumBuyPrice
 	}
 	if maximumSummaryAgeSecs < 1 {
 		return ErrInvalidSummaryAge
@@ -78,12 +82,15 @@ func (s *Service) SetTradeSettings(minimumProfit decimal.Decimal, maximumSummary
 		return ErrInvalidConcurrentTrades
 	}
 
-	return s.repo.SetTradeSettings(minimumProfit, maximumSummaryAgeSecs, maximumConcurrentTrades)
+	return s.repo.SetTradeSettings(minimumProfit, maximumBuyPrice, maximumSummaryAgeSecs, maximumConcurrentTrades)
 }
 
-func (s *Service) InitializeTradeSettings(minimumProfit decimal.Decimal, maximumSummaryAgeSecs, maximumConcurrentTrades int) error {
+func (s *Service) InitializeTradeSettings(minimumProfit, maximumBuyPrice decimal.Decimal, maximumSummaryAgeSecs, maximumConcurrentTrades int) error {
 	if minimumProfit.IsNegative() {
 		return ErrInvalidMinimumProfit
+	}
+	if maximumBuyPrice.LessThanOrEqual(decimal.Zero) {
+		return ErrInvalidMaximumBuyPrice
 	}
 	if maximumSummaryAgeSecs < 1 {
 		return ErrInvalidSummaryAge
@@ -92,7 +99,7 @@ func (s *Service) InitializeTradeSettings(minimumProfit decimal.Decimal, maximum
 		return ErrInvalidConcurrentTrades
 	}
 
-	return s.repo.InitializeTradeSettings(minimumProfit, maximumSummaryAgeSecs, maximumConcurrentTrades)
+	return s.repo.InitializeTradeSettings(minimumProfit, maximumBuyPrice, maximumSummaryAgeSecs, maximumConcurrentTrades)
 }
 
 func (s *Service) GetTradeSettings() (domain.TradeSettings, error) {

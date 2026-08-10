@@ -28,6 +28,7 @@ type Platform struct {
 
 type TradeSettings struct {
 	MinimumProfit           decimal.Decimal
+	MaximumBuyPrice         decimal.Decimal
 	MaximumSummaryAgeSecs   int
 	MaximumConcurrentTrades int
 }

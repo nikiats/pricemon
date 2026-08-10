@@ -29,9 +29,10 @@
 	</header>
 	<form id="settings">
 		<label>Минимальная прибыль <input name="minimumProfit" inputmode="decimal" required></label>
+		<label>Максимальная сумма покупки <input name="maximumBuyPrice" inputmode="decimal" required></label>
 		<label>Максимальный возраст, с <input name="maximumSummaryAgeSecs" type="number" min="1" step="1" required></label>
-		<button>Сохранить</button>
 		<label>Максимум одновременных сделок <input name="maximumConcurrentTrades" type="number" min="1" step="1" required></label>
+		<button>Сохранить</button>
 	</form>
 	<p id="status" class="status" aria-live="polite"></p>
 	<script>
@@ -56,6 +57,7 @@
 			}
 			const settings = await response.json();
 			form.minimumProfit.value = settings.minimumProfit;
+			form.maximumBuyPrice.value = settings.maximumBuyPrice;
 			form.maximumSummaryAgeSecs.value = settings.maximumSummaryAgeSecs;
 			form.maximumConcurrentTrades.value = settings.maximumConcurrentTrades;
 		}
@@ -67,6 +69,7 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					minimumProfit: form.minimumProfit.value,
+					maximumBuyPrice: form.maximumBuyPrice.value,
 					maximumSummaryAgeSecs: Number(form.maximumSummaryAgeSecs.value),
 					maximumConcurrentTrades: Number(form.maximumConcurrentTrades.value),
 				}),

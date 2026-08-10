@@ -559,10 +559,13 @@ components:
   schemas:
     TradeSettings:
       type: object
-      required: [minimumProfit, maximumSummaryAgeSecs, maximumConcurrentTrades]
+      required: [minimumProfit, maximumBuyPrice, maximumSummaryAgeSecs, maximumConcurrentTrades]
       properties:
         minimumProfit:
           type: string
+        maximumBuyPrice:
+          type: string
+          description: Максимальная цена покупки предмета для новой сделки.
         maximumSummaryAgeSecs:
           type: integer
           minimum: 1

@@ -73,6 +73,10 @@ func (s *InboxWorker) ProcessPendingEvents() error {
 			if err = json.Unmarshal(event.Payload, &payload); err != nil {
 				return err
 			}
+			if payload.SellPrice.GreaterThan(settings.MaximumBuyPrice) {
+				ids = append(ids, event.ID)
+				continue
+			}
 
 			actual, err := s.isActualTrade(payload, time.Now())
 			if err != nil {

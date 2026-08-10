@@ -15,7 +15,7 @@ type Service interface {
 	GetSummary(categoryID, offset, limit int, maxAge *int) (domain.SummaryPage, error)
 	GetInventory() ([]domain.InventorySummary, error)
 	GetTradeSettings() (domain.TradeSettings, error)
-	SetTradeSettings(minimumProfit decimal.Decimal, maximumSummaryAgeSecs, maximumConcurrentTrades int) error
+	SetTradeSettings(minimumProfit, maximumBuyPrice decimal.Decimal, maximumSummaryAgeSecs, maximumConcurrentTrades int) error
 	SetOffer(offer domain.Offer) error
 	SetOffers(offers []domain.Offer) error
 	SetZeroCount(categoryID int, itemName string, platformID int, platformToken string) (bool, error)
