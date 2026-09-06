@@ -1,0 +1,156 @@
+openapi: '3.0.3'
+info:
+  title: Web API
+  description: Аутентификация пользователей и доступ к веб-интерфейсу
+  version: '1.0'
+servers:
+  - url: https://127.0.0.1/v1
+paths:
+  /users:
+    post:
+      summary: Зарегистрировать пользователя
+      operationId: registerUser
+      description: Создаёт пользователя с указанными email и паролем.
+      tags: ['Пользователи']
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+      responses:
+        '201':
+          description: Пользователь создан
+          headers:
+            Location:
+              description: URI созданного пользователя
+              schema:
+                type: string
+                format: uri
+        '409':
+          description: Email уже занят
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Некорректные данные пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /sessions:
+    post:
+      summary: Войти в систему
+      operationId: createSession
+      description: Проверяет учётные данные и выдаёт токен доступа.
+      tags: ['Пользователи']
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+      responses:
+        '201':
+          description: Сессия создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '401':
+          description: Неверный email или пароль
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Некорректные учётные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /sessions/current:
+    delete:
+      summary: Выйти из системы
+      operationId: deleteCurrentSession
+      description: >-
+        Завершает сессию, которой принадлежит предъявленный токен доступа.
+      tags: ['Пользователи']
+      security:
+        - UserAuth: []
+      responses:
+        '204':
+          description: Сессия завершена
+        '401':
+          description: Некорректные данные для авторизации или их отсутствие
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Credentials:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          description: Email пользователя
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 72
+          description: Пароль
+    Session:
+      type: object
+      required: [accessToken, expiresIn]
+      properties:
+        accessToken:
+          type: string
+          description: JWT для доступа к защищённым ресурсам
+        expiresIn:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Время жизни токена в секундах
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Машиночитаемый код ошибки
+        message:
+          type: string
+          description: Описание ошибки
+
+  securitySchemes:
+    UserAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Токен доступа пользователя
