@@ -9,6 +9,15 @@ import (
 	"pricemon/internal/web/service"
 )
 
+const (
+	codeInvalidJSON        = "invalid_json"
+	codeAlreadyAuthorized  = "already_authorized"
+	codeUnauthorized       = "unauthorized"
+	codeEmailTaken         = "email_taken"
+	codeInvalidCredentials = "invalid_credentials"
+	codeInternalError      = "internal_error"
+)
+
 type apiError struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
@@ -23,11 +32,11 @@ func writeError(w http.ResponseWriter, status int, code string) {
 func writeServiceError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, service.ErrEmailTaken):
-		writeError(w, http.StatusConflict, "email_taken")
+		writeError(w, http.StatusConflict, codeEmailTaken)
 	case errors.Is(err, service.ErrInvalidCredentials):
-		writeError(w, http.StatusUnauthorized, "invalid_credentials")
+		writeError(w, http.StatusUnauthorized, codeInvalidCredentials)
 	default:
 		slog.Error("request failed", "method", r.Method, "path", r.URL.Path, "error", err)
-		writeError(w, http.StatusInternalServerError, "internal_error")
+		writeError(w, http.StatusInternalServerError, codeInternalError)
 	}
 }

@@ -21,20 +21,6 @@ func New(service webService) *Handler {
 	return &Handler{service: service}
 }
 
-func (h *Handler) RegisterPages(mux *http.ServeMux) {
-	mux.HandleFunc("GET /{$}", pageHandler("pages/index.html"))
-	mux.HandleFunc("GET /login", pageHandler("pages/login.html"))
-	mux.HandleFunc("GET /register", pageHandler("pages/register.html"))
-	mux.HandleFunc("GET /css/", assetHandler("/css/", "css"))
-	mux.HandleFunc("GET /js/", assetHandler("/js/", "js"))
-}
-
-func (h *Handler) RegisterAPI(mux *http.ServeMux) {
-	mux.HandleFunc("POST /users", h.Signup)
-	mux.HandleFunc("POST /sessions", h.Login)
-	mux.Handle("DELETE /sessions/current", h.AuthMiddleware(http.HandlerFunc(h.Logout)))
-}
-
 type credentials struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -48,7 +34,7 @@ type session struct {
 func decodeCredentials(w http.ResponseWriter, r *http.Request) (credentials, bool) {
 	var body credentials
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, http.StatusUnprocessableEntity, "invalid_json")
+		writeError(w, http.StatusUnprocessableEntity, codeInvalidJSON)
 		return body, false
 	}
 	return body, true
@@ -57,7 +43,7 @@ func decodeCredentials(w http.ResponseWriter, r *http.Request) (credentials, boo
 func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
 	_, ok := contextUserID(r.Context())
 	if ok {
-		writeError(w, http.StatusConflict, "already_authorized")
+		writeError(w, http.StatusConflict, codeAlreadyAuthorized)
 		return
 	}
 

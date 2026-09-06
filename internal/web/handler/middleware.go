@@ -14,13 +14,13 @@ func (h *Handler) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		parts := strings.Split(r.Header.Get("Authorization"), " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			writeError(w, http.StatusUnauthorized, "unauthorized")
+			writeError(w, http.StatusUnauthorized, codeUnauthorized)
 			return
 		}
 
 		userID, err := h.service.ParseToken(parts[1])
 		if err != nil {
-			writeError(w, http.StatusUnauthorized, "unauthorized")
+			writeError(w, http.StatusUnauthorized, codeUnauthorized)
 			return
 		}
 
