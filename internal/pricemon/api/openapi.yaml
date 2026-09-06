@@ -1,0 +1,191 @@
+openapi: '3.0.3'
+info:
+  title: Pricemon API
+  description: Взаимодействие с системой для загрузки данных, получения сводок и управления задачами
+  version: '1.0'
+servers:
+  - url: https://127.0.0.1/v1
+paths:
+  /offers/{itemId}/{side}:
+    put:
+      summary: Создать или актуализировать оффер
+      operationId: upsertOffer
+      description: >-
+        Создаёт или полностью актуализирует оффер. Платформа определяется
+        bearer-токеном, поэтому идентичность оффера состоит из платформы,
+        itemId и side.
+      tags: ['Сборщики предложений']
+      security:
+        - OffersCollectorAuth: []
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          description: ID предмета
+          schema:
+            type: integer
+            format: int64
+        - name: side
+          in: path
+          required: true
+          description: Тип предложения
+          schema:
+            type: string
+            enum: [buy, sell]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Offer'
+      responses:
+        '200':
+          description: Оффер обновлён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Offer'
+        '201':
+          description: Оффер создан
+          headers:
+            Location:
+              description: URI созданного оффера
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Offer'
+        '401':
+          description: Некорректные данные для авторизации или их отсутствие
+        '403':
+          description: У токена нет доступа к платформе
+        '422':
+          description: Некорректные данные оффера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /offers/batch:
+    post:
+      summary: Пакетно актуализировать офферы
+      operationId: batchUpsertOffers
+      description: >-
+        Актуализирует офферы для платформы, определённой bearer-токеном.
+      tags: ['Сборщики предложений']
+      security:
+        - OffersCollectorAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [offers]
+              properties:
+                offers:
+                  type: array
+                  minItems: 1
+                  items:
+                    $ref: "#/components/schemas/Offer"
+      responses:
+        '200':
+          description: Офферы обработаны
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OfferBatchResult'
+        '401':
+          description: Некорректные данные для авторизации или их отсутствие
+        '403':
+          description: У токена нет доступа к платформе
+        '422':
+          description: Некорректные данные офферов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /summary:
+    get:
+      summary: Получить список возможных сделок
+      operationId: listDeals
+      description: Получение списка возможных сделок на основе имеющихся предложений
+      security: []
+      tags: ['Веб-панель']
+      responses:
+        '200':
+          description: Список возможных сделок в порядке убывания потенциальной прибыли
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [deals]
+                properties:
+                  deals:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Deal"
+
+components:
+  schemas:
+    Offer:
+      type: object
+      required: [itemId, side, price]
+      properties:
+        itemId: { type: integer, format: int64, description: "ID предмета" }
+        side: { type: string, enum: ["buy", "sell"], description: "Тип предложения" }
+        price:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Цена
+    OfferBatchResult:
+      type: object
+      required: [created, updated]
+      properties:
+        created:
+          type: integer
+          minimum: 0
+          description: Число созданных офферов
+        updated:
+          type: integer
+          minimum: 0
+          description: Число обновлённых офферов
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Машиночитаемый код ошибки
+        message:
+          type: string
+          description: Описание ошибки
+    Deal:
+      type: object
+      properties:
+        buyPlatform:
+          type: object
+          properties:
+            id: { type: integer }
+            name: { type: string }
+        sellPlatform:
+          type: object
+          properties:
+            id: { type: integer }
+            name: { type: string }
+        buyPrice: { type: integer }
+        sellPrice: { type: integer }
+        item:
+          type: object
+          properties:
+            id: { type: integer }
+            name: { type: string }
+
+  securitySchemes:
+    OffersCollectorAuth:
+      type: http
+      scheme: bearer
+      description: Токен для данного сборщика предложений
+    
