@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -8,8 +9,8 @@ import (
 )
 
 type webService interface {
-	CreateUser(email string, password string) (model.User, error)
-	Authenticate(email string, password string) (model.Session, error)
+	CreateUser(ctx context.Context, email string, password string) (model.User, error)
+	Authenticate(ctx context.Context, email string, password string) (model.Session, error)
 	ParseToken(token string) (string, error)
 }
 
@@ -52,7 +53,7 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.service.CreateUser(body.Email, body.Password)
+	_, err := h.service.CreateUser(r.Context(), body.Email, body.Password)
 	if err != nil {
 		writeServiceError(w, r, err)
 		return
@@ -67,7 +68,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	issued, err := h.service.Authenticate(body.Email, body.Password)
+	issued, err := h.service.Authenticate(r.Context(), body.Email, body.Password)
 	if err != nil {
 		writeServiceError(w, r, err)
 		return
