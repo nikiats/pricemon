@@ -21,6 +21,12 @@ type Offer struct {
 	Price int64
 }
 
+type PlatformOffer struct {
+	PlatformID int64
+	Side       Side
+	Price      int64
+}
+
 type OfferChanges struct {
 	Set    []Offer
 	Delete []OfferKey

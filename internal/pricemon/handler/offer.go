@@ -36,7 +36,9 @@ func (h *Handler) PutOffer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	changes := model.OfferChanges{Set: []model.Offer{{OfferKey: key, Price: body.Price}}}
+	changes := model.OfferChanges{
+		Set: []model.Offer{{OfferKey: key, Price: body.Price}},
+	}
 
 	result, err := h.service.ApplyOfferChanges(r.Context(), platformID, changes)
 	if err != nil {
@@ -60,7 +62,12 @@ func (h *Handler) DeleteOffer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.service.ApplyOfferChanges(r.Context(), platformID, model.OfferChanges{Delete: []model.OfferKey{key}})
+	result, err := h.service.ApplyOfferChanges(
+		r.Context(),
+		platformID,
+		model.OfferChanges{Delete: []model.OfferKey{key}},
+	)
+
 	if err != nil {
 		writeServiceError(w, r, err)
 		return
@@ -105,7 +112,10 @@ func (h *Handler) PatchOffers(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	for _, item := range body.Delete {
-		changes.Delete = append(changes.Delete, model.OfferKey{ItemID: item.ItemID, Side: item.Side})
+		changes.Delete = append(
+			changes.Delete,
+			model.OfferKey{ItemID: item.ItemID, Side: item.Side},
+		)
 	}
 
 	result, err := h.service.ApplyOfferChanges(r.Context(), platformID, changes)

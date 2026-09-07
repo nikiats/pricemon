@@ -38,32 +38,76 @@ func (q *Queries) DeleteOffer(ctx context.Context, arg DeleteOfferParams) (int64
 	return result.RowsAffected(), nil
 }
 
-const insertBestDeal = `-- name: InsertBestDeal :exec
-INSERT INTO best_deals (item_id, buy_platform_id, sell_platform_id, buy_price, sell_price)
-SELECT sell.item_id, sell.platform_id, buy.platform_id, sell.price, buy.price
-FROM offers sell
-JOIN offers buy
-  ON buy.item_id = sell.item_id
- AND buy.side = 'buy'
- AND buy.platform_id <> sell.platform_id
-WHERE sell.item_id = $1
-  AND sell.side = 'sell'
-  AND buy.price > sell.price
-ORDER BY buy.price - sell.price DESC
-LIMIT 1
+const listOffersOfItem = `-- name: ListOffersOfItem :many
+SELECT platform_id, side, price FROM offers
+WHERE item_id = $1
+ORDER BY platform_id, side
 `
 
-func (q *Queries) InsertBestDeal(ctx context.Context, itemID int64) error {
-	_, err := q.db.Exec(ctx, insertBestDeal, itemID)
-	return err
+type ListOffersOfItemRow struct {
+	PlatformID int64
+	Side       OfferSide
+	Price      int64
+}
+
+func (q *Queries) ListOffersOfItem(ctx context.Context, itemID int64) ([]ListOffersOfItemRow, error) {
+	rows, err := q.db.Query(ctx, listOffersOfItem, itemID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListOffersOfItemRow
+	for rows.Next() {
+		var i ListOffersOfItemRow
+		if err := rows.Scan(&i.PlatformID, &i.Side, &i.Price); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const lockItem = `-- name: LockItem :exec
-SELECT pg_advisory_xact_lock($1)
+SELECT id FROM items
+WHERE id = $1
+FOR UPDATE
 `
 
-func (q *Queries) LockItem(ctx context.Context, pgAdvisoryXactLock int64) error {
-	_, err := q.db.Exec(ctx, lockItem, pgAdvisoryXactLock)
+func (q *Queries) LockItem(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, lockItem, id)
+	return err
+}
+
+const upsertBestDeal = `-- name: UpsertBestDeal :exec
+INSERT INTO best_deals (item_id, buy_platform_id, sell_platform_id, buy_price, sell_price)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (item_id) DO UPDATE
+SET buy_platform_id  = EXCLUDED.buy_platform_id,
+    sell_platform_id = EXCLUDED.sell_platform_id,
+    buy_price        = EXCLUDED.buy_price,
+    sell_price       = EXCLUDED.sell_price,
+    updated_at       = now()
+`
+
+type UpsertBestDealParams struct {
+	ItemID         int64
+	BuyPlatformID  int64
+	SellPlatformID int64
+	BuyPrice       int64
+	SellPrice      int64
+}
+
+func (q *Queries) UpsertBestDeal(ctx context.Context, arg UpsertBestDealParams) error {
+	_, err := q.db.Exec(ctx, upsertBestDeal,
+		arg.ItemID,
+		arg.BuyPlatformID,
+		arg.SellPlatformID,
+		arg.BuyPrice,
+		arg.SellPrice,
+	)
 	return err
 }
 

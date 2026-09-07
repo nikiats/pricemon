@@ -13,4 +13,5 @@ WHERE id = $1;
 
 -- name: ListItemsOfPlatform :many
 SELECT DISTINCT item_id FROM offers
-WHERE platform_id = $1;
+WHERE platform_id = $1
+ORDER BY item_id;

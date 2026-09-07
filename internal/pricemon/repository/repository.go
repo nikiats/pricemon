@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"pricemon/internal/pricemon/model"
 	"pricemon/internal/pricemon/repository/db"
 )
 
@@ -61,11 +62,38 @@ func refreshBestDeal(ctx context.Context, q *db.Queries, itemID int64) error {
 	if err := q.LockItem(ctx, itemID); err != nil {
 		return fmt.Errorf("lock item: %w", err)
 	}
-	if err := q.DeleteBestDeal(ctx, itemID); err != nil {
-		return fmt.Errorf("delete best deal: %w", err)
+
+	rows, err := q.ListOffersOfItem(ctx, itemID)
+	if err != nil {
+		return fmt.Errorf("list offers of item: %w", err)
 	}
-	if err := q.InsertBestDeal(ctx, itemID); err != nil {
-		return fmt.Errorf("insert best deal: %w", err)
+
+	offers := make([]model.PlatformOffer, 0, len(rows))
+	for _, row := range rows {
+		offers = append(offers, model.PlatformOffer{
+			PlatformID: row.PlatformID,
+			Side:       model.Side(row.Side),
+			Price:      row.Price,
+		})
+	}
+
+	pair, found := model.FindBestPair(itemID, offers)
+	if !found {
+		if err := q.DeleteBestDeal(ctx, itemID); err != nil {
+			return fmt.Errorf("delete best deal: %w", err)
+		}
+		return nil
+	}
+
+	err = q.UpsertBestDeal(ctx, db.UpsertBestDealParams{
+		ItemID:         pair.ItemID,
+		BuyPlatformID:  pair.BuyPlatformID,
+		SellPlatformID: pair.SellPlatformID,
+		BuyPrice:       pair.BuyPrice,
+		SellPrice:      pair.SellPrice,
+	})
+	if err != nil {
+		return fmt.Errorf("upsert best deal: %w", err)
 	}
 
 	return nil
