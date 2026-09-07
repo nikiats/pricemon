@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"pricemon/internal/web/model"
@@ -36,13 +37,17 @@ func New(users userRepository, jwtSecret []byte, accessTokenTTL time.Duration, b
 	}
 }
 
+func normalizeEmail(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
+}
+
 func (s *Service) CreateUser(ctx context.Context, email string, password string) (model.User, error) {
 	hash, err := hashPassword(password, s.bcryptCost)
 	if err != nil {
 		return model.User{}, fmt.Errorf("hash password: %w", err)
 	}
 
-	user, err := s.users.Create(ctx, email, hash)
+	user, err := s.users.Create(ctx, normalizeEmail(email), hash)
 	switch {
 	case errors.Is(err, repository.ErrDuplicate):
 		return model.User{}, ErrEmailTaken
@@ -54,7 +59,7 @@ func (s *Service) CreateUser(ctx context.Context, email string, password string)
 }
 
 func (s *Service) Authenticate(ctx context.Context, email string, password string) (model.Session, error) {
-	user, err := s.users.GetByEmail(ctx, email)
+	user, err := s.users.GetByEmail(ctx, normalizeEmail(email))
 	switch {
 	case errors.Is(err, repository.ErrNotFound):
 		return model.Session{}, ErrInvalidCredentials

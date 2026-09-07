@@ -55,8 +55,9 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (model.Us
 
 func toUser(row db.User) model.User {
 	return model.User{
-		ID:           row.ID.String(),
-		Email:        row.Email,
-		PasswordHash: row.PasswordHash,
+		ID:                   row.ID.String(),
+		Email:                row.Email,
+		PasswordHash:         row.PasswordHash,
+		CanAccessDealmanager: row.CanAccessDealmanager,
 	}
 }
