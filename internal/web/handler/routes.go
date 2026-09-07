@@ -2,6 +2,8 @@ package handler
 
 import "net/http"
 
+const apiPrefix = "/v1"
+
 type middleware func(http.HandlerFunc) http.HandlerFunc
 
 func middlewareChain(middlewareFuncs ...middleware) middleware {
@@ -13,20 +15,34 @@ func middlewareChain(middlewareFuncs ...middleware) middleware {
 	}
 }
 
-func (h *Handler) RegisterPages(mux *http.ServeMux) {
+func (h *Handler) Register(mux *http.ServeMux) {
+	h.registerPages(mux)
+
+	api := http.NewServeMux()
+	h.registerAPI(api)
+
+	mux.Handle(apiPrefix+"/", http.StripPrefix(apiPrefix, api))
+}
+
+func (h *Handler) registerPages(mux *http.ServeMux) {
 	mux.HandleFunc("GET /{$}", pageHandler("pages/index.html"))
 	mux.HandleFunc("GET /login", pageHandler("pages/login.html"))
 	mux.HandleFunc("GET /register", pageHandler("pages/register.html"))
+	mux.HandleFunc("GET /menu", pageHandler("pages/menu.html"))
+	mux.HandleFunc("GET /summary", pageHandler("pages/summary.html"))
 
 	mux.HandleFunc("GET /css/", assetHandler("/css/", "css"))
 	mux.HandleFunc("GET /js/", assetHandler("/js/", "js"))
 }
 
-func (h *Handler) RegisterAPI(mux *http.ServeMux) {
+func (h *Handler) registerAPI(mux *http.ServeMux) {
 	authorized := middlewareChain(h.AuthMiddleware)
-	_ = middlewareChain(h.AuthMiddleware)
+	dealmanagerAccess := middlewareChain(authorized, h.RequireDealmanager)
 
 	mux.HandleFunc("POST /users", h.Signup)
 	mux.HandleFunc("POST /sessions", h.Login)
-	mux.Handle("DELETE /sessions/current", authorized(h.Logout))
+	mux.HandleFunc("DELETE /sessions/current", authorized(h.Logout))
+
+	mux.HandleFunc("GET /summary", proxyAs(h.pricemon, "/v1/summary"))
+	mux.HandleFunc("GET /deals", dealmanagerAccess(proxyAs(h.dealmanager, "/v1/deals")))
 }

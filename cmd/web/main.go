@@ -20,13 +20,11 @@ func main() {
 	}
 
 	ctx := context.Background()
-
 	pool, err := pgxpool.New(ctx, cfg.DB.URL)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer pool.Close()
-
 	if err := pool.Ping(ctx); err != nil {
 		log.Fatal(err)
 	}
@@ -37,14 +35,14 @@ func main() {
 		cfg.Auth.AccessTokenTTL,
 		cfg.Auth.BcryptCost,
 	)
-	h := handler.New(svc)
 
-	api := http.NewServeMux()
-	h.RegisterAPI(api)
+	h, err := handler.New(svc, cfg.Upstreams)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	mux := http.NewServeMux()
-	h.RegisterPages(mux)
-	mux.Handle("/v1/", http.StripPrefix("/v1", api))
+	h.Register(mux)
 
 	log.Fatal(http.ListenAndServe(":"+cfg.Server.Port, mux))
 }

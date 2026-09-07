@@ -7,9 +7,15 @@ import (
 )
 
 type Config struct {
-	Server config.Server
-	DB     config.DB
-	Auth   Auth
+	Server    config.Server
+	DB        config.DB
+	Auth      Auth
+	Upstreams Upstreams
+}
+
+type Upstreams struct {
+	Pricemon    string `env:"PRICEMON_URL,required"`
+	Dealmanager string `env:"DEALMANAGER_URL,required"`
 }
 
 type Auth struct {

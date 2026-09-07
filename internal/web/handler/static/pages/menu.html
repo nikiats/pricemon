@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ru">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Меню — Gopricemon</title>
+	<link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+	<header>
+		<h1>gopricemon система</h1>
+		<div class="session">
+			<span id="current-user"></span>
+			<button type="button" id="logout">Выход</button>
+		</div>
+	</header>
+
+	<nav class="links" aria-label="Страницы сайта">
+		<a href="/summary">
+			<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h16M7 3v18M14 3v18"/></svg>
+			<span>Сводная таблица</span>
+		</a>
+	</nav>
+
+	<script src="/js/session.js"></script>
+	<script>
+		if (requireAuth()) renderSession();
+	</script>
+</body>
+</html>

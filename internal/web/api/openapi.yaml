@@ -109,6 +109,64 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /summary:
+    get:
+      summary: Получить список возможных сделок
+      operationId: listSummary
+      description: Проксируется в pricemon без изменений.
+      tags: ['Сделки']
+      security: []
+      responses:
+        '200':
+          description: Список возможных сделок в порядке убывания потенциальной прибыли
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [deals]
+                properties:
+                  deals:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Deal'
+        '502':
+          description: Внутренний сервис недоступен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /deals:
+    get:
+      summary: Получить сделки пользователя
+      operationId: listDeals
+      description: >-
+        Проксируется в dealmanager без изменений. Требует права
+        can_access_dealmanager у пользователя.
+      tags: ['Сделки']
+      security:
+        - UserAuth: []
+      responses:
+        '200':
+          description: Сделки. Форма ответа определяется контрактом dealmanager.
+        '401':
+          description: Некорректные данные для авторизации или их отсутствие
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: У пользователя нет доступа к dealmanager
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '502':
+          description: Внутренний сервис недоступен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
   schemas:
     Credentials:
@@ -137,6 +195,26 @@ components:
           format: int64
           minimum: 0
           description: Время жизни токена в секундах
+    Deal:
+      type: object
+      properties:
+        buyPlatform:
+          type: object
+          properties:
+            id: { type: integer }
+            name: { type: string }
+        sellPlatform:
+          type: object
+          properties:
+            id: { type: integer }
+            name: { type: string }
+        buyPrice: { type: integer }
+        sellPrice: { type: integer }
+        item:
+          type: object
+          properties:
+            id: { type: integer }
+            name: { type: string }
     Error:
       type: object
       required: [code, message]

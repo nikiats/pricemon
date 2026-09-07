@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -48,6 +49,23 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (model.Us
 		return model.User{}, ErrNotFound
 	case err != nil:
 		return model.User{}, fmt.Errorf("get user by email: %w", err)
+	}
+
+	return toUser(row), nil
+}
+
+func (r *UserRepository) GetByID(ctx context.Context, id string) (model.User, error) {
+	userID, err := uuid.Parse(id)
+	if err != nil {
+		return model.User{}, ErrNotFound
+	}
+
+	row, err := r.q.GetUserByID(ctx, userID)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return model.User{}, ErrNotFound
+	case err != nil:
+		return model.User{}, fmt.Errorf("get user by id: %w", err)
 	}
 
 	return toUser(row), nil

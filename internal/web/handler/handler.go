@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"pricemon/internal/web/config"
 	"pricemon/internal/web/model"
 )
 
@@ -12,14 +13,31 @@ type webService interface {
 	CreateUser(ctx context.Context, email string, password string) (model.User, error)
 	Authenticate(ctx context.Context, email string, password string) (model.Session, error)
 	ParseToken(token string) (string, error)
+	CanAccessDealmanager(ctx context.Context, userID string) (bool, error)
 }
 
 type Handler struct {
-	service webService
+	service     webService
+	pricemon    http.Handler
+	dealmanager http.Handler
 }
 
-func New(service webService) *Handler {
-	return &Handler{service: service}
+func New(service webService, upstreams config.Upstreams) (*Handler, error) {
+	pricemon, err := newProxy(upstreams.Pricemon)
+	if err != nil {
+		return nil, err
+	}
+
+	dealmanager, err := newProxy(upstreams.Dealmanager)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Handler{
+		service:     service,
+		pricemon:    pricemon,
+		dealmanager: dealmanager,
+	}, nil
 }
 
 type credentials struct {

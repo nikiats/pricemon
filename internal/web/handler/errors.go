@@ -10,12 +10,14 @@ import (
 )
 
 const (
-	codeInvalidJSON        = "invalid_json"
-	codeAlreadyAuthorized  = "already_authorized"
-	codeUnauthorized       = "unauthorized"
-	codeEmailTaken         = "email_taken"
-	codeInvalidCredentials = "invalid_credentials"
-	codeInternalError      = "internal_error"
+	codeInvalidJSON         = "invalid_json"
+	codeAlreadyAuthorized   = "already_authorized"
+	codeUnauthorized        = "unauthorized"
+	codeEmailTaken          = "email_taken"
+	codeInvalidCredentials  = "invalid_credentials"
+	codeInternalError       = "internal_error"
+	codeForbidden           = "forbidden"
+	codeUpstreamUnavailable = "upstream_unavailable"
 )
 
 type apiError struct {

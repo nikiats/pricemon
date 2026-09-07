@@ -19,6 +19,7 @@ var (
 type userRepository interface {
 	Create(ctx context.Context, email, passwordHash string) (model.User, error)
 	GetByEmail(ctx context.Context, email string) (model.User, error)
+	GetByID(ctx context.Context, id string) (model.User, error)
 }
 
 type Service struct {
@@ -77,4 +78,16 @@ func (s *Service) Authenticate(ctx context.Context, email string, password strin
 	}
 
 	return session, nil
+}
+
+func (s *Service) CanAccessDealmanager(ctx context.Context, userID string) (bool, error) {
+	user, err := s.users.GetByID(ctx, userID)
+	switch {
+	case errors.Is(err, repository.ErrNotFound):
+		return false, nil
+	case err != nil:
+		return false, fmt.Errorf("get user by id: %w", err)
+	}
+
+	return user.CanAccessDealmanager, nil
 }

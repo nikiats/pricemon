@@ -29,6 +29,22 @@ func (h *Handler) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+func (h *Handler) RequireDealmanager(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, _ := contextUserID(r.Context())
+
+		allowed, err := h.service.CanAccessDealmanager(r.Context(), userID)
+		switch {
+		case err != nil:
+			writeServiceError(w, r, err)
+		case !allowed:
+			writeError(w, http.StatusForbidden, codeForbidden)
+		default:
+			next.ServeHTTP(w, r)
+		}
+	}
+}
+
 func contextUserID(ctx context.Context) (string, bool) {
 	id, ok := ctx.Value(userIDKey).(string)
 	return id, ok

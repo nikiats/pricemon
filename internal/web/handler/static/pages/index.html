@@ -4,7 +4,7 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Gopricemon</title>
-	<link rel="stylesheet" href="../css/styles.css">
+	<link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
 	<main class="home">
@@ -12,8 +12,12 @@
 		<nav class="actions" aria-label="Авторизация">
 			<a class="button" href="/register">Регистрация</a>
 			<a class="button" href="/login">Вход</a>
-			<button type="button">Выход</button>
 		</nav>
 	</main>
+
+	<script src="/js/session.js"></script>
+	<script>
+		if (session.token()) location.replace('/menu');
+	</script>
 </body>
 </html>

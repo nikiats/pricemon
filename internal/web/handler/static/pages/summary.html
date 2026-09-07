@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ru">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Сводная таблица — Gopricemon</title>
+	<link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+	<header>
+		<div class="title">
+			<a class="button" href="/menu">← Назад</a>
+			<h1>Сводная таблица</h1>
+		</div>
+		<div class="session">
+			<span id="current-user"></span>
+			<button type="button" id="logout">Выход</button>
+		</div>
+	</header>
+
+	<div class="table-wrap">
+		<table>
+			<thead><tr><th>Предмет</th><th>Площадки</th><th>Цены</th><th>Разница</th></tr></thead>
+			<tbody id="summary"></tbody>
+		</table>
+	</div>
+	<p id="status" aria-live="polite"></p>
+
+	<script src="/js/session.js"></script>
+	<script src="/js/summary.js"></script>
+</body>
+</html>
