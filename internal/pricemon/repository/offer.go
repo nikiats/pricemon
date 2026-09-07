@@ -26,12 +26,13 @@ func (r *Repository) ApplyOfferChanges(ctx context.Context, platformID int64, ch
 		items := make([]int64, 0, len(ordered))
 
 		for _, change := range ordered {
-			if err := applyChange(ctx, q, platformID, change, &result); err != nil {
+			itemID, touched, err := applyChange(ctx, q, platformID, change, &result)
+			if err != nil {
 				return err
 			}
 
-			if len(items) == 0 || items[len(items)-1] != change.key.ItemID {
-				items = append(items, change.key.ItemID)
+			if touched && !slices.Contains(items, itemID) {
+				items = append(items, itemID)
 			}
 		}
 
@@ -50,35 +51,41 @@ func (r *Repository) ApplyOfferChanges(ctx context.Context, platformID int64, ch
 	return result, nil
 }
 
-func applyChange(ctx context.Context, q *db.Queries, platformID int64, change offerChange, result *model.OfferBatchResult) error {
+func applyChange(ctx context.Context, q *db.Queries, platformID int64, change offerChange, result *model.OfferBatchResult) (int64, bool, error) {
 	if change.remove {
 		removed, err := q.DeleteOffer(ctx, db.DeleteOfferParams{
 			PlatformID: platformID,
-			ItemID:     change.key.ItemID,
+			Name:       change.key.ItemName,
 			Side:       db.OfferSide(change.key.Side),
 		})
 		if err != nil {
-			return fmt.Errorf("delete offer: %w", err)
+			return 0, false, fmt.Errorf("delete offer: %w", err)
+		}
+		if len(removed) == 0 {
+			return 0, false, nil
 		}
 
-		if removed > 0 {
-			result.Deleted++
-		}
+		result.Deleted++
 
-		return nil
+		return removed[0], true, nil
+	}
+
+	itemID, err := q.UpsertItem(ctx, change.key.ItemName)
+	if err != nil {
+		return 0, false, fmt.Errorf("upsert item: %w", err)
 	}
 
 	created, err := q.UpsertOffer(ctx, db.UpsertOfferParams{
 		PlatformID: platformID,
-		ItemID:     change.key.ItemID,
+		ItemID:     itemID,
 		Side:       db.OfferSide(change.key.Side),
 		Price:      change.price,
 	})
 	if err != nil {
 		if known := classify(err); known != nil {
-			return known
+			return 0, false, known
 		}
-		return fmt.Errorf("upsert offer: %w", err)
+		return 0, false, fmt.Errorf("upsert offer: %w", err)
 	}
 
 	if created {
@@ -87,7 +94,7 @@ func applyChange(ctx context.Context, q *db.Queries, platformID int64, change of
 		result.Replaced++
 	}
 
-	return nil
+	return itemID, true, nil
 }
 
 func orderChanges(changes model.OfferChanges) []offerChange {
@@ -101,8 +108,8 @@ func orderChanges(changes model.OfferChanges) []offerChange {
 	}
 
 	slices.SortFunc(ordered, func(a, b offerChange) int {
-		if a.key.ItemID != b.key.ItemID {
-			return cmp.Compare(a.key.ItemID, b.key.ItemID)
+		if a.key.ItemName != b.key.ItemName {
+			return cmp.Compare(a.key.ItemName, b.key.ItemName)
 		}
 		return cmp.Compare(a.key.Side, b.key.Side)
 	})

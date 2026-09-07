@@ -10,7 +10,7 @@ import (
 	"pricemon/internal/pricemon/repository"
 )
 
-const maxNameLength = 100
+const maxNameLength = 200
 
 func (s *Service) ListPlatforms(ctx context.Context) ([]model.Platform, error) {
 	platforms, err := s.repo.ListPlatforms(ctx)

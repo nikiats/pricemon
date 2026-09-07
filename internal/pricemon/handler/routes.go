@@ -26,8 +26,8 @@ func (h *Handler) registerAPI(mux *http.ServeMux) {
 	collector := middlewareChain(h.CollectorAuth)
 	web := middlewareChain(h.ServiceAuth)
 
-	mux.HandleFunc("PUT /items/{itemId}/offers/{side}", collector(h.PutOffer))
-	mux.HandleFunc("DELETE /items/{itemId}/offers/{side}", collector(h.DeleteOffer))
+	mux.HandleFunc("PUT /items/{itemName}/offers/{side}", collector(h.PutOffer))
+	mux.HandleFunc("DELETE /items/{itemName}/offers/{side}", collector(h.DeleteOffer))
 	mux.HandleFunc("PATCH /offers", collector(h.PatchOffers))
 
 	mux.HandleFunc("GET /deals", web(h.ListDeals))

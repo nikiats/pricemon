@@ -17,7 +17,6 @@ const (
 	codeNotFound          = "not_found"
 	codePlatformNameTaken = "platform_name_taken"
 	codeUnknownPlatform   = "unknown_platform"
-	codeUnknownItem       = "unknown_item"
 	codeDuplicateOffer    = "duplicate_offer"
 	codeInternalError     = "internal_error"
 )
@@ -41,8 +40,6 @@ func writeServiceError(w http.ResponseWriter, r *http.Request, err error) {
 		writeError(w, http.StatusConflict, codePlatformNameTaken)
 	case errors.Is(err, service.ErrUnknownPlatform):
 		writeError(w, http.StatusUnprocessableEntity, codeUnknownPlatform)
-	case errors.Is(err, service.ErrUnknownItem):
-		writeError(w, http.StatusUnprocessableEntity, codeUnknownItem)
 	case errors.Is(err, service.ErrDuplicateOffer):
 		writeError(w, http.StatusUnprocessableEntity, codeDuplicateOffer)
 	case errors.Is(err, service.ErrInvalidOffer), errors.Is(err, service.ErrInvalidName):

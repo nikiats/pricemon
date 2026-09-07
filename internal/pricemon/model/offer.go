@@ -12,8 +12,8 @@ func (s Side) Valid() bool {
 }
 
 type OfferKey struct {
-	ItemID int64
-	Side   Side
+	ItemName string
+	Side     Side
 }
 
 type Offer struct {

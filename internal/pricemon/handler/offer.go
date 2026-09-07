@@ -7,14 +7,14 @@ import (
 )
 
 type offerKey struct {
-	ItemID int64      `json:"itemId"`
-	Side   model.Side `json:"side"`
+	Name string     `json:"name"`
+	Side model.Side `json:"side"`
 }
 
 type offer struct {
-	ItemID int64      `json:"itemId"`
-	Side   model.Side `json:"side"`
-	Price  int64      `json:"price"`
+	Name  string     `json:"name"`
+	Side  model.Side `json:"side"`
+	Price int64      `json:"price"`
 }
 
 type offerBatchResult struct {
@@ -46,7 +46,7 @@ func (h *Handler) PutOffer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := offer{ItemID: key.ItemID, Side: key.Side, Price: body.Price}
+	response := offer{Name: key.ItemName, Side: key.Side, Price: body.Price}
 	if result.Created > 0 {
 		w.Header().Set("Location", r.URL.Path)
 		writeJSON(w, http.StatusCreated, response)
@@ -107,14 +107,14 @@ func (h *Handler) PatchOffers(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, item := range body.Set {
 		changes.Set = append(changes.Set, model.Offer{
-			OfferKey: model.OfferKey{ItemID: item.ItemID, Side: item.Side},
+			OfferKey: model.OfferKey{ItemName: item.Name, Side: item.Side},
 			Price:    item.Price,
 		})
 	}
 	for _, item := range body.Delete {
 		changes.Delete = append(
 			changes.Delete,
-			model.OfferKey{ItemID: item.ItemID, Side: item.Side},
+			model.OfferKey{ItemName: item.Name, Side: item.Side},
 		)
 	}
 
@@ -138,17 +138,12 @@ func (h *Handler) offerAddress(w http.ResponseWriter, r *http.Request) (int64, m
 		return 0, model.OfferKey{}, false
 	}
 
-	itemID, ok := pathInt(r, "itemId")
-	if !ok {
-		writeError(w, http.StatusNotFound, codeNotFound)
-		return 0, model.OfferKey{}, false
-	}
-
+	name := r.PathValue("itemName")
 	side := model.Side(r.PathValue("side"))
-	if !side.Valid() {
+	if name == "" || !side.Valid() {
 		writeError(w, http.StatusNotFound, codeNotFound)
 		return 0, model.OfferKey{}, false
 	}
 
-	return platformID, model.OfferKey{ItemID: itemID, Side: side}, true
+	return platformID, model.OfferKey{ItemName: name, Side: side}, true
 }

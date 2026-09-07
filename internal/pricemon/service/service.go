@@ -10,7 +10,6 @@ import (
 var (
 	ErrPlatformNameTaken = errors.New("platform name already taken")
 	ErrUnknownPlatform   = errors.New("platform does not exist")
-	ErrUnknownItem       = errors.New("item does not exist")
 	ErrNotFound          = errors.New("not found")
 	ErrDuplicateOffer    = errors.New("offer listed more than once")
 	ErrInvalidOffer      = errors.New("invalid offer")

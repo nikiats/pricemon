@@ -13,15 +13,13 @@ import (
 	"pricemon/internal/pricemon/repository"
 )
 
-const collectorKeyPrefix = "pmc_"
-
 func generateAPIKey() (string, error) {
 	buf := make([]byte, 32)
 	if _, err := rand.Read(buf); err != nil {
 		return "", fmt.Errorf("generate api key: %w", err)
 	}
 
-	return collectorKeyPrefix + base64.RawURLEncoding.EncodeToString(buf), nil
+	return base64.RawURLEncoding.EncodeToString(buf), nil
 }
 
 func hashAPIKey(key string) []byte {

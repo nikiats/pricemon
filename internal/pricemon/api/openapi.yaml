@@ -6,20 +6,21 @@ info:
 servers:
   - url: https://127.0.0.1/v1
 paths:
-  /items/{itemId}/offers/{side}:
+  /items/{itemName}/offers/{side}:
     put:
       summary: Создать или заменить оффер
       operationId: putOffer
       description: >-
         Оффер — предложение купить или продать предмет на определённой платформе
-        по указанной цене. Идентичность оффера складывается из платформы, предмета
-        и стороны, поэтому запрос по одному и тому же адресу заменяет предыдущее
-        предложение. Платформа определяется bearer-токеном.
+        по указанной цене. Предмет адресуется каноническим именем; если он ещё
+        неизвестен, сервер заводит его сам. Идентичность оффера складывается из
+        платформы, предмета и стороны, поэтому запрос по одному и тому же адресу
+        заменяет предыдущее предложение. Платформа определяется bearer-токеном.
       tags: ['Сборщики предложений']
       security:
         - OffersCollectorAuth: []
       parameters:
-        - $ref: '#/components/parameters/ItemId'
+        - $ref: '#/components/parameters/ItemName'
         - $ref: '#/components/parameters/Side'
       requestBody:
         required: true
@@ -62,7 +63,7 @@ paths:
       security:
         - OffersCollectorAuth: []
       parameters:
-        - $ref: '#/components/parameters/ItemId'
+        - $ref: '#/components/parameters/ItemName'
         - $ref: '#/components/parameters/Side'
       responses:
         '204':
@@ -371,15 +372,17 @@ paths:
 
 components:
   parameters:
-    ItemId:
-      name: itemId
+    ItemName:
+      name: itemName
       in: path
       required: true
-      description: ID предмета
+      description: >-
+        Каноническое имя предмета. Если такого предмета ещё нет, он создаётся
+        при первой же загрузке оффера.
       schema:
-        type: integer
-        format: int64
-        minimum: 1
+        type: string
+        minLength: 1
+        maxLength: 200
     Side:
       name: side
       in: path
@@ -457,14 +460,14 @@ components:
           $ref: '#/components/schemas/Price'
     OfferKey:
       type: object
-      required: [itemId, side]
+      required: [name, side]
       description: Адрес оффера внутри платформы
       properties:
-        itemId:
-          type: integer
-          format: int64
-          minimum: 1
-          description: ID предмета
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Каноническое имя предмета
         side:
           $ref: '#/components/schemas/Side'
     Offer:

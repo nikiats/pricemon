@@ -36,9 +36,11 @@ func (q *Queries) DeletePlatform(ctx context.Context, id int64) (int64, error) {
 }
 
 const listItemsOfPlatform = `-- name: ListItemsOfPlatform :many
-SELECT DISTINCT item_id FROM offers
-WHERE platform_id = $1
-ORDER BY item_id
+SELECT offers.item_id FROM offers
+JOIN items ON items.id = offers.item_id
+WHERE offers.platform_id = $1
+GROUP BY offers.item_id, items.name
+ORDER BY items.name
 `
 
 func (q *Queries) ListItemsOfPlatform(ctx context.Context, platformID int64) ([]int64, error) {

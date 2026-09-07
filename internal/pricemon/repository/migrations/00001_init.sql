@@ -6,8 +6,8 @@ CREATE TABLE platforms (
 );
 
 CREATE TABLE items (
-    id   bigint PRIMARY KEY,
-    name text NOT NULL
+    id   bigserial PRIMARY KEY,
+    name text NOT NULL UNIQUE
 );
 
 CREATE TABLE collectors (

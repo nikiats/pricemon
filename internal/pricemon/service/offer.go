@@ -10,14 +10,15 @@ import (
 )
 
 func (s *Service) ApplyOfferChanges(ctx context.Context, platformID int64, changes model.OfferChanges) (model.OfferBatchResult, error) {
-	if err := validateChanges(changes); err != nil {
+	prepared, err := prepareChanges(changes)
+	if err != nil {
 		return model.OfferBatchResult{}, err
 	}
 
-	result, err := s.repo.ApplyOfferChanges(ctx, platformID, changes)
+	result, err := s.repo.ApplyOfferChanges(ctx, platformID, prepared)
 	switch {
 	case errors.Is(err, repository.ErrNoRelation):
-		return model.OfferBatchResult{}, ErrUnknownItem
+		return model.OfferBatchResult{}, ErrUnknownPlatform
 	case err != nil:
 		return model.OfferBatchResult{}, fmt.Errorf("apply offer changes: %w", err)
 	}
@@ -25,28 +26,48 @@ func (s *Service) ApplyOfferChanges(ctx context.Context, platformID int64, chang
 	return result, nil
 }
 
-func validateChanges(changes model.OfferChanges) error {
+func prepareChanges(changes model.OfferChanges) (model.OfferChanges, error) {
+	prepared := model.OfferChanges{
+		Set:    make([]model.Offer, 0, len(changes.Set)),
+		Delete: make([]model.OfferKey, 0, len(changes.Delete)),
+	}
 	seen := make(map[model.OfferKey]struct{}, len(changes.Set)+len(changes.Delete))
 
 	for _, offer := range changes.Set {
-		if !offer.Side.Valid() || offer.ItemID < 1 || offer.Price < 0 {
-			return ErrInvalidOffer
+		key, err := prepareKey(offer.OfferKey, seen)
+		if err != nil {
+			return model.OfferChanges{}, err
 		}
-		if _, duplicate := seen[offer.OfferKey]; duplicate {
-			return ErrDuplicateOffer
+		if offer.Price < 0 {
+			return model.OfferChanges{}, ErrInvalidOffer
 		}
-		seen[offer.OfferKey] = struct{}{}
+
+		prepared.Set = append(prepared.Set, model.Offer{OfferKey: key, Price: offer.Price})
 	}
 
 	for _, key := range changes.Delete {
-		if !key.Side.Valid() || key.ItemID < 1 {
-			return ErrInvalidOffer
+		key, err := prepareKey(key, seen)
+		if err != nil {
+			return model.OfferChanges{}, err
 		}
-		if _, duplicate := seen[key]; duplicate {
-			return ErrDuplicateOffer
-		}
-		seen[key] = struct{}{}
+
+		prepared.Delete = append(prepared.Delete, key)
 	}
 
-	return nil
+	return prepared, nil
+}
+
+func prepareKey(key model.OfferKey, seen map[model.OfferKey]struct{}) (model.OfferKey, error) {
+	name, err := normalizeName(key.ItemName)
+	if err != nil || !key.Side.Valid() {
+		return model.OfferKey{}, ErrInvalidOffer
+	}
+
+	key.ItemName = name
+	if _, duplicate := seen[key]; duplicate {
+		return model.OfferKey{}, ErrDuplicateOffer
+	}
+	seen[key] = struct{}{}
+
+	return key, nil
 }

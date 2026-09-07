@@ -19,23 +19,40 @@ func (q *Queries) DeleteBestDeal(ctx context.Context, itemID int64) error {
 	return err
 }
 
-const deleteOffer = `-- name: DeleteOffer :execrows
+const deleteOffer = `-- name: DeleteOffer :many
 DELETE FROM offers
-WHERE platform_id = $1 AND item_id = $2 AND side = $3
+USING items
+WHERE offers.item_id = items.id
+  AND offers.platform_id = $1
+  AND items.name = $2
+  AND offers.side = $3
+RETURNING offers.item_id
 `
 
 type DeleteOfferParams struct {
 	PlatformID int64
-	ItemID     int64
+	Name       string
 	Side       OfferSide
 }
 
-func (q *Queries) DeleteOffer(ctx context.Context, arg DeleteOfferParams) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteOffer, arg.PlatformID, arg.ItemID, arg.Side)
+func (q *Queries) DeleteOffer(ctx context.Context, arg DeleteOfferParams) ([]int64, error) {
+	rows, err := q.db.Query(ctx, deleteOffer, arg.PlatformID, arg.Name, arg.Side)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	return result.RowsAffected(), nil
+	defer rows.Close()
+	var items []int64
+	for rows.Next() {
+		var item_id int64
+		if err := rows.Scan(&item_id); err != nil {
+			return nil, err
+		}
+		items = append(items, item_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listOffersOfItem = `-- name: ListOffersOfItem :many
@@ -109,6 +126,20 @@ func (q *Queries) UpsertBestDeal(ctx context.Context, arg UpsertBestDealParams) 
 		arg.SellPrice,
 	)
 	return err
+}
+
+const upsertItem = `-- name: UpsertItem :one
+INSERT INTO items (name)
+VALUES ($1)
+ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+RETURNING id
+`
+
+func (q *Queries) UpsertItem(ctx context.Context, name string) (int64, error) {
+	row := q.db.QueryRow(ctx, upsertItem, name)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const upsertOffer = `-- name: UpsertOffer :one
