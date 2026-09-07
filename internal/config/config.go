@@ -13,6 +13,10 @@ type DB struct {
 	URL string `env:"DATABASE_URL,required"`
 }
 
+type Service struct {
+	Token string `env:"SERVICE_TOKEN,required"`
+}
+
 func Load[T any](cfg *T) error {
 	_ = godotenv.Load()
 	return env.Parse(cfg)

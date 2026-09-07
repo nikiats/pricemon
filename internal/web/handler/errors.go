@@ -11,7 +11,6 @@ import (
 
 const (
 	codeInvalidJSON         = "invalid_json"
-	codeAlreadyAuthorized   = "already_authorized"
 	codeUnauthorized        = "unauthorized"
 	codeEmailTaken          = "email_taken"
 	codeInvalidCredentials  = "invalid_credentials"

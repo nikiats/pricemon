@@ -43,6 +43,6 @@ func (h *Handler) registerAPI(mux *http.ServeMux) {
 	mux.HandleFunc("POST /sessions", h.Login)
 	mux.HandleFunc("DELETE /sessions/current", authorized(h.Logout))
 
-	mux.HandleFunc("GET /summary", proxyAs(h.pricemon, "/v1/summary"))
+	mux.HandleFunc("GET /summary", proxyAs(h.pricemon, "/v1/deals"))
 	mux.HandleFunc("GET /deals", dealmanagerAccess(proxyAs(h.dealmanager, "/v1/deals")))
 }

@@ -141,24 +141,6 @@ paths:
       tags: ['Веб-панель']
       security:
         - ServiceAuth: []
-      parameters:
-        - name: limit
-          in: query
-          required: false
-          description: Максимальное число сделок в ответе
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 200
-            default: 50
-        - name: offset
-          in: query
-          required: false
-          description: Сколько сделок пропустить от начала списка
-          schema:
-            type: integer
-            minimum: 0
-            default: 0
       responses:
         '200':
           description: Список возможных сделок
@@ -172,13 +154,6 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/Deal'
-                  nextOffset:
-                    type: integer
-                    minimum: 0
-                    nullable: true
-                    description: Значение offset для следующей страницы; null, если сделок больше нет
-        '422':
-          $ref: '#/components/responses/Unprocessable'
         '500':
           $ref: '#/components/responses/Internal'
   /platforms:

@@ -14,8 +14,10 @@ type Config struct {
 }
 
 type Upstreams struct {
-	Pricemon    string `env:"PRICEMON_URL,required"`
-	Dealmanager string `env:"DEALMANAGER_URL,required"`
+	Pricemon         string `env:"PRICEMON_URL,required"`
+	PricemonToken    string `env:"PRICEMON_SERVICE_TOKEN,required"`
+	Dealmanager      string `env:"DEALMANAGER_URL,required"`
+	DealmanagerToken string `env:"DEALMANAGER_SERVICE_TOKEN,required"`
 }
 
 type Auth struct {

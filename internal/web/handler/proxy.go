@@ -7,7 +7,7 @@ import (
 	"net/url"
 )
 
-func newProxy(rawURL string) (*httputil.ReverseProxy, error) {
+func newProxy(rawURL, serviceToken string) (*httputil.ReverseProxy, error) {
 	target, err := url.Parse(rawURL)
 	if err != nil {
 		return nil, err
@@ -19,6 +19,7 @@ func newProxy(rawURL string) (*httputil.ReverseProxy, error) {
 			r.Out.Host = target.Host
 			r.SetXForwarded()
 			r.Out.Header.Del("X-User-Id")
+			r.Out.Header.Set("Authorization", "Bearer "+serviceToken)
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			slog.Error("upstream failed", "method", r.Method, "path", r.URL.Path, "error", err)

@@ -5,8 +5,17 @@ sql:
     queries: internal/web/repository/queries
     gen:
       go:
-        package: db
         out: internal/web/repository/db
+        sql_package: pgx/v5
+        overrides:
+          - db_type: uuid
+            go_type: github.com/google/uuid.UUID
+  - engine: postgresql
+    schema: internal/pricemon/repository/migrations
+    queries: internal/pricemon/repository/queries
+    gen:
+      go:
+        out: internal/pricemon/repository/db
         sql_package: pgx/v5
         overrides:
           - db_type: uuid

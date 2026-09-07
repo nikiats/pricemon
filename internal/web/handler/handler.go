@@ -23,12 +23,12 @@ type Handler struct {
 }
 
 func New(service webService, upstreams config.Upstreams) (*Handler, error) {
-	pricemon, err := newProxy(upstreams.Pricemon)
+	pricemon, err := newProxy(upstreams.Pricemon, upstreams.PricemonToken)
 	if err != nil {
 		return nil, err
 	}
 
-	dealmanager, err := newProxy(upstreams.Dealmanager)
+	dealmanager, err := newProxy(upstreams.Dealmanager, upstreams.DealmanagerToken)
 	if err != nil {
 		return nil, err
 	}
@@ -60,12 +60,6 @@ func decodeCredentials(w http.ResponseWriter, r *http.Request) (credentials, boo
 }
 
 func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
-	_, ok := contextUserID(r.Context())
-	if ok {
-		writeError(w, http.StatusConflict, codeAlreadyAuthorized)
-		return
-	}
-
 	body, ok := decodeCredentials(w, r)
 	if !ok {
 		return

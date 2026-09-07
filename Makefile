@@ -6,6 +6,9 @@ DB_URL_web         := $(WEB_DATABASE_URL)
 DB_URL_pricemon    := $(PRICEMON_DATABASE_URL)
 DB_URL_dealmanager := $(DEALMANAGER_DATABASE_URL)
 
+TOKEN_pricemon    := $(PRICEMON_SERVICE_TOKEN)
+TOKEN_dealmanager := $(DEALMANAGER_SERVICE_TOKEN)
+
 CHECK_URL = @test -n "$(DB_URL_$*)" || { echo "нет URL базы для сервиса '$*': задайте соответствующий <SERVICE>_DATABASE_URL в .env"; exit 1; }
 
 export CGO_ENABLED = 0
@@ -51,7 +54,7 @@ migrate-up migrate-status: migrate-%:
 
 run-%:
 	$(CHECK_URL)
-	DATABASE_URL="$(DB_URL_$*)" go run ./cmd/$*
+	DATABASE_URL="$(DB_URL_$*)" SERVICE_TOKEN="$(TOKEN_$*)" go run ./cmd/$*
 
 build:
 	go build -o bin/ ./cmd/...
