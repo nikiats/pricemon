@@ -1,46 +1,35 @@
 openapi: '3.0.3'
 info:
   title: Pricemon API
-  description: Взаимодействие с системой для загрузки данных, получения сводок и управления задачами
+  description: Взаимодействие с системой для загрузки предложений и получения возможных сделок
   version: '1.0'
 servers:
   - url: https://127.0.0.1/v1
 paths:
-  /offers/{itemId}/{side}:
+  /items/{itemId}/offers/{side}:
     put:
-      summary: Создать или актуализировать оффер
-      operationId: upsertOffer
+      summary: Создать или заменить оффер
+      operationId: putOffer
       description: >-
-        Создаёт или полностью актуализирует оффер. Платформа определяется
-        bearer-токеном, поэтому идентичность оффера состоит из платформы,
-        itemId и side.
+        Оффер — предложение купить или продать предмет на определённой платформе
+        по указанной цене. Идентичность оффера складывается из платформы, предмета
+        и стороны, поэтому запрос по одному и тому же адресу заменяет предыдущее
+        предложение. Платформа определяется bearer-токеном.
       tags: ['Сборщики предложений']
       security:
         - OffersCollectorAuth: []
       parameters:
-        - name: itemId
-          in: path
-          required: true
-          description: ID предмета
-          schema:
-            type: integer
-            format: int64
-        - name: side
-          in: path
-          required: true
-          description: Тип предложения
-          schema:
-            type: string
-            enum: [buy, sell]
+        - $ref: '#/components/parameters/ItemId'
+        - $ref: '#/components/parameters/Side'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Offer'
+              $ref: '#/components/schemas/OfferPrice'
       responses:
         '200':
-          description: Оффер обновлён
+          description: Оффер заменён
           content:
             application/json:
               schema:
@@ -58,21 +47,44 @@ paths:
               schema:
                 $ref: '#/components/schemas/Offer'
         '401':
-          description: Некорректные данные для авторизации или их отсутствие
+          $ref: '#/components/responses/Unauthorized'
         '403':
-          description: У токена нет доступа к платформе
+          $ref: '#/components/responses/Forbidden'
         '422':
-          description: Некорректные данные оффера
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /offers/batch:
-    post:
-      summary: Пакетно актуализировать офферы
-      operationId: batchUpsertOffers
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/Internal'
+    delete:
+      summary: Снять оффер
+      operationId: deleteOffer
+      description: Убирает предложение платформы по этому предмету и стороне.
+      tags: ['Сборщики предложений']
+      security:
+        - OffersCollectorAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ItemId'
+        - $ref: '#/components/parameters/Side'
+      responses:
+        '204':
+          description: Оффер снят
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/Internal'
+  /offers:
+    patch:
+      summary: Пакетно изменить офферы
+      operationId: patchOffers
       description: >-
-        Актуализирует офферы для платформы, определённой bearer-токеном.
+        Применяет к коллекции офферов платформы, определённой bearer-токеном,
+        сразу несколько изменений. Элемент set эквивалентен запросу PUT по адресу
+        оффера, элемент delete — запросу DELETE. Один и тот же оффер не может
+        встречаться в запросе дважды, в том числе одновременно в set и delete:
+        такой запрос отклоняется целиком. Изменения применяются одной транзакцией.
       tags: ['Сборщики предложений']
       security:
         - OffersCollectorAuth: []
@@ -82,13 +94,22 @@ paths:
           application/json:
             schema:
               type: object
-              required: [offers]
+              minProperties: 1
               properties:
-                offers:
+                set:
                   type: array
                   minItems: 1
+                  maxItems: 1000
+                  description: Офферы, которые нужно создать или заменить
                   items:
-                    $ref: "#/components/schemas/Offer"
+                    $ref: '#/components/schemas/Offer'
+                delete:
+                  type: array
+                  minItems: 1
+                  maxItems: 1000
+                  description: Офферы, которые нужно снять
+                  items:
+                    $ref: '#/components/schemas/OfferKey'
       responses:
         '200':
           description: Офферы обработаны
@@ -97,25 +118,50 @@ paths:
               schema:
                 $ref: '#/components/schemas/OfferBatchResult'
         '401':
-          description: Некорректные данные для авторизации или их отсутствие
+          $ref: '#/components/responses/Unauthorized'
         '403':
-          description: У токена нет доступа к платформе
-        '422':
-          description: Некорректные данные офферов
+          $ref: '#/components/responses/Forbidden'
+        '413':
+          description: Слишком большой запрос
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /summary:
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/Internal'
+  /deals:
     get:
       summary: Получить список возможных сделок
       operationId: listDeals
-      description: Получение списка возможных сделок на основе имеющихся предложений
-      security: []
+      description: >-
+        Возможные сделки, вычисленные из текущих офферов, в порядке убывания
+        потенциальной прибыли.
       tags: ['Веб-панель']
+      security:
+        - ServiceAuth: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Максимальное число сделок в ответе
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: offset
+          in: query
+          required: false
+          description: Сколько сделок пропустить от начала списка
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
       responses:
         '200':
-          description: Список возможных сделок в порядке убывания потенциальной прибыли
+          description: Список возможных сделок
           content:
             application/json:
               schema:
@@ -125,33 +171,430 @@ paths:
                   deals:
                     type: array
                     items:
-                      $ref: "#/components/schemas/Deal"
+                      $ref: '#/components/schemas/Deal'
+                  nextOffset:
+                    type: integer
+                    minimum: 0
+                    nullable: true
+                    description: Значение offset для следующей страницы; null, если сделок больше нет
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/Internal'
+  /platforms:
+    get:
+      summary: Получить список площадок
+      operationId: listPlatforms
+      tags: ['Администрирование']
+      security:
+        - ServiceAuth: []
+      responses:
+        '200':
+          description: Площадки
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [platforms]
+                properties:
+                  platforms:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Platform'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/Internal'
+    post:
+      summary: Добавить площадку
+      operationId: createPlatform
+      tags: ['Администрирование']
+      security:
+        - ServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlatformInput'
+      responses:
+        '201':
+          description: Площадка создана
+          headers:
+            Location:
+              description: URI созданной площадки
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Platform'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Площадка с таким названием уже есть
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/Internal'
+  /platforms/{platformId}:
+    delete:
+      summary: Удалить площадку
+      operationId: deletePlatform
+      description: >-
+        Удаление необратимо и каскадное: вместе с площадкой пропадают все её
+        офферы, все привязанные к ней сборщики вместе с их ключами и все
+        торговые пары, в которых она участвовала.
+      tags: ['Администрирование']
+      security:
+        - ServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PlatformId'
+      responses:
+        '204':
+          description: Площадка удалена
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/Internal'
+  /collectors:
+    get:
+      summary: Получить список сборщиков
+      operationId: listCollectors
+      description: API-ключи в ответе не возвращаются — они известны только в момент выдачи.
+      tags: ['Администрирование']
+      security:
+        - ServiceAuth: []
+      parameters:
+        - name: platformId
+          in: query
+          required: false
+          description: Показать только сборщиков этой площадки
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '200':
+          description: Сборщики
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [collectors]
+                properties:
+                  collectors:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Collector'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/Internal'
+    post:
+      summary: Добавить сборщика
+      operationId: createCollector
+      description: >-
+        Создаёт сборщика, привязанного к площадке, и выдаёт для него случайный
+        API-ключ. Ключ возвращается единственный раз — в этом ответе; сервер хранит только
+        его хеш и показать ключ повторно не сможет.
+      tags: ['Администрирование']
+      security:
+        - ServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CollectorInput'
+      responses:
+        '201':
+          description: Сборщик создан
+          headers:
+            Location:
+              description: URI созданного сборщика
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectorWithKey'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+        '500':
+          $ref: '#/components/responses/Internal'
+  /collectors/{collectorId}:
+    delete:
+      summary: Удалить сборщика
+      operationId: deleteCollector
+      description: >-
+        Сборщик и его ключ перестают действовать немедленно. Уже загруженные им
+        офферы остаются — они принадлежат площадке, а не сборщику.
+      tags: ['Администрирование']
+      security:
+        - ServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CollectorId'
+      responses:
+        '204':
+          description: Сборщик удалён
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/Internal'
+  /collectors/{collectorId}/api-key:
+    post:
+      summary: Перевыпустить API-ключ сборщика
+      operationId: rotateCollectorApiKey
+      description: >-
+        Генерирует новый случайный ключ и немедленно обесценивает предыдущий.
+        Новый ключ возвращается один раз, в этом ответе.
+      tags: ['Администрирование']
+      security:
+        - ServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CollectorId'
+      responses:
+        '201':
+          description: Ключ перевыпущен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKey'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/Internal'
 
 components:
+  parameters:
+    ItemId:
+      name: itemId
+      in: path
+      required: true
+      description: ID предмета
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    Side:
+      name: side
+      in: path
+      required: true
+      description: Сторона предложения — купить или продать
+      schema:
+        $ref: '#/components/schemas/Side'
+    PlatformId:
+      name: platformId
+      in: path
+      required: true
+      description: ID площадки
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    CollectorId:
+      name: collectorId
+      in: path
+      required: true
+      description: ID сборщика
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    Unauthorized:
+      description: Некорректные данные для авторизации или их отсутствие
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: У токена нет доступа к платформе
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unprocessable:
+      description: Некорректные данные запроса
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Internal:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
   schemas:
-    Offer:
+    Side:
+      type: string
+      enum: [buy, sell]
+      description: >-
+        buy — платформа готова купить предмет по этой цене,
+        sell — платформа предлагает предмет к продаже по этой цене
+    Price:
+      type: integer
+      format: int64
+      minimum: 0
+      description: Цена в минимальных единицах валюты
+    OfferPrice:
       type: object
-      required: [itemId, side, price]
+      required: [price]
       properties:
-        itemId: { type: integer, format: int64, description: "ID предмета" }
-        side: { type: string, enum: ["buy", "sell"], description: "Тип предложения" }
         price:
+          $ref: '#/components/schemas/Price'
+    OfferKey:
+      type: object
+      required: [itemId, side]
+      description: Адрес оффера внутри платформы
+      properties:
+        itemId:
           type: integer
           format: int64
-          minimum: 0
-          description: Цена
+          minimum: 1
+          description: ID предмета
+        side:
+          $ref: '#/components/schemas/Side'
+    Offer:
+      allOf:
+        - $ref: '#/components/schemas/OfferKey'
+        - type: object
+          required: [price]
+          properties:
+            price:
+              $ref: '#/components/schemas/Price'
     OfferBatchResult:
       type: object
-      required: [created, updated]
+      required: [created, replaced, deleted]
       properties:
         created:
           type: integer
           minimum: 0
           description: Число созданных офферов
-        updated:
+        replaced:
           type: integer
           minimum: 0
-          description: Число обновлённых офферов
+          description: Число заменённых офферов
+        deleted:
+          type: integer
+          minimum: 0
+          description: Число фактически снятых офферов; отсутствовавшие не считаются
+    PlatformInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Название площадки, уникальное
+    Platform:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+    CollectorInput:
+      type: object
+      required: [platformId, name]
+      properties:
+        platformId:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Площадка, от имени которой сборщик загружает офферы
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Человекочитаемое имя, чтобы отличать сборщиков одной площадки
+    Collector:
+      type: object
+      required: [id, platformId, name, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        platformId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    ApiKey:
+      type: object
+      required: [apiKey]
+      properties:
+        apiKey:
+          type: string
+          description: Случайный ключ сборщика; показывается только в этом ответе
+    CollectorWithKey:
+      allOf:
+        - $ref: '#/components/schemas/Collector'
+        - $ref: '#/components/schemas/ApiKey'
+    Item:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+    Deal:
+      type: object
+      required: [item, buyPlatform, sellPlatform, buyPrice, sellPrice]
+      properties:
+        item:
+          $ref: '#/components/schemas/Item'
+        buyPlatform:
+          allOf:
+            - $ref: '#/components/schemas/Platform'
+          description: Площадка, на которой предмет покупается
+        sellPlatform:
+          allOf:
+            - $ref: '#/components/schemas/Platform'
+          description: Площадка, на которой предмет продаётся
+        buyPrice:
+          $ref: '#/components/schemas/Price'
+        sellPrice:
+          $ref: '#/components/schemas/Price'
     Error:
       type: object
       required: [code, message]
@@ -162,30 +605,15 @@ components:
         message:
           type: string
           description: Описание ошибки
-    Deal:
-      type: object
-      properties:
-        buyPlatform:
-          type: object
-          properties:
-            id: { type: integer }
-            name: { type: string }
-        sellPlatform:
-          type: object
-          properties:
-            id: { type: integer }
-            name: { type: string }
-        buyPrice: { type: integer }
-        sellPrice: { type: integer }
-        item:
-          type: object
-          properties:
-            id: { type: integer }
-            name: { type: string }
 
   securitySchemes:
     OffersCollectorAuth:
       type: http
       scheme: bearer
-      description: Токен для данного сборщика предложений
-    
+      description: API-ключ сборщика предложений; определяет платформу
+    ServiceAuth:
+      type: http
+      scheme: bearer
+      description: >-
+        Служебный токен сервиса web. Pricemon недоступен из внешней сети,
+        поэтому все запросы, кроме загрузки офферов сборщиками, приходят от него.
