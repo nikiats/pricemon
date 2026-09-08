@@ -73,9 +73,9 @@ func (r *UserRepository) GetByID(ctx context.Context, id string) (model.User, er
 
 func toUser(row db.User) model.User {
 	return model.User{
-		ID:                   row.ID.String(),
-		Email:                row.Email,
-		PasswordHash:         row.PasswordHash,
-		CanAccessDealmanager: row.CanAccessDealmanager,
+		ID:                row.ID.String(),
+		Email:             row.Email,
+		PasswordHash:      row.PasswordHash,
+		HasAdminPrivilege: row.HasAdminPrivilege,
 	}
 }

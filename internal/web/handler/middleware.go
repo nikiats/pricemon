@@ -29,11 +29,11 @@ func (h *Handler) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (h *Handler) RequireDealmanager(next http.HandlerFunc) http.HandlerFunc {
+func (h *Handler) RequireAdmin(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, _ := contextUserID(r.Context())
 
-		allowed, err := h.service.CanAccessDealmanager(r.Context(), userID)
+		allowed, err := h.service.HasAdminPrivilege(r.Context(), userID)
 		switch {
 		case err != nil:
 			writeServiceError(w, r, err)

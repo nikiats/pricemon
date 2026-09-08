@@ -16,7 +16,7 @@ CHECK_NAME = $(if $(strip $(NAME)),,$(error укажите имя: make migrate-
 export CGO_ENABLED = 0
 
 .PHONY: generate generate-check build test fmt tidy \
-	migrate-up migrate-status \
+	migrate-up migrate-down migrate-reset migrate-status \
 	$(addprefix run-,$(SERVICES)) FORCE
 
 generate:
@@ -33,6 +33,10 @@ migrate-down-%: FORCE
 	$(CHECK_URL)
 	go tool goose -dir internal/$*/repository/migrations postgres "$(DB_URL_$*)" down
 
+migrate-reset-%: FORCE
+	$(CHECK_URL)
+	go tool goose -dir internal/$*/repository/migrations postgres "$(DB_URL_$*)" reset
+
 migrate-status-%: FORCE
 	$(CHECK_URL)
 	go tool goose -dir internal/$*/repository/migrations postgres "$(DB_URL_$*)" status
@@ -42,6 +46,10 @@ migrate-create-%: FORCE
 	go tool goose -s -dir internal/$*/repository/migrations create $(NAME) sql
 
 migrate-up: $(addprefix migrate-up-,$(MIGRATION_SERVICES))
+
+migrate-down: $(addprefix migrate-down-,$(MIGRATION_SERVICES))
+
+migrate-reset: $(addprefix migrate-reset-,$(MIGRATION_SERVICES))
 
 migrate-status: $(addprefix migrate-status-,$(MIGRATION_SERVICES))
 

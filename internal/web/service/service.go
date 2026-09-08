@@ -80,7 +80,7 @@ func (s *Service) Authenticate(ctx context.Context, email string, password strin
 	return session, nil
 }
 
-func (s *Service) CanAccessDealmanager(ctx context.Context, userID string) (bool, error) {
+func (s *Service) HasAdminPrivilege(ctx context.Context, userID string) (bool, error) {
 	user, err := s.users.GetByID(ctx, userID)
 	switch {
 	case errors.Is(err, repository.ErrNotFound):
@@ -89,5 +89,5 @@ func (s *Service) CanAccessDealmanager(ctx context.Context, userID string) (bool
 		return false, fmt.Errorf("get user by id: %w", err)
 	}
 
-	return user.CanAccessDealmanager, nil
+	return user.HasAdminPrivilege, nil
 }

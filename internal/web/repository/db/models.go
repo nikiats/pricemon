@@ -10,9 +10,9 @@ import (
 )
 
 type User struct {
-	ID                   uuid.UUID
-	Email                string
-	PasswordHash         string
-	CanAccessDealmanager bool
-	CreatedAt            pgtype.Timestamptz
+	ID                uuid.UUID
+	Email             string
+	PasswordHash      string
+	HasAdminPrivilege bool
+	CreatedAt         pgtype.Timestamptz
 }

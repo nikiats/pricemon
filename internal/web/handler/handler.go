@@ -13,7 +13,7 @@ type webService interface {
 	CreateUser(ctx context.Context, email string, password string) (model.User, error)
 	Authenticate(ctx context.Context, email string, password string) (model.Session, error)
 	ParseToken(token string) (string, error)
-	CanAccessDealmanager(ctx context.Context, userID string) (bool, error)
+	HasAdminPrivilege(ctx context.Context, userID string) (bool, error)
 }
 
 type Handler struct {

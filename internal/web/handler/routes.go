@@ -37,12 +37,12 @@ func (h *Handler) registerPages(mux *http.ServeMux) {
 
 func (h *Handler) registerAPI(mux *http.ServeMux) {
 	authorized := middlewareChain(h.AuthMiddleware)
-	dealmanagerAccess := middlewareChain(authorized, h.RequireDealmanager)
+	adminOnly := middlewareChain(authorized, h.RequireAdmin)
 
 	mux.HandleFunc("POST /users", h.Signup)
 	mux.HandleFunc("POST /sessions", h.Login)
 	mux.HandleFunc("DELETE /sessions/current", authorized(h.Logout))
 
 	mux.HandleFunc("GET /summary", proxyAs(h.pricemon, "/v1/deals"))
-	mux.HandleFunc("GET /deals", dealmanagerAccess(proxyAs(h.dealmanager, "/v1/deals")))
+	mux.HandleFunc("GET /deals", adminOnly(proxyAs(h.dealmanager, "/v1/deals")))
 }

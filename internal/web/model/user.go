@@ -1,8 +1,8 @@
 package model
 
 type User struct {
-	ID                   string
-	Email                string
-	PasswordHash         string
-	CanAccessDealmanager bool
+	ID                string
+	Email             string
+	PasswordHash      string
+	HasAdminPrivilege bool
 }
