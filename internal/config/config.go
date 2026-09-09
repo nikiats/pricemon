@@ -11,6 +11,7 @@ type Server struct {
 
 type DB struct {
 	URL string `env:"DATABASE_URL,required"`
+	MigrateOnStart string `env:"DATABASE_MIGRATE,required"`
 }
 
 type Service struct {

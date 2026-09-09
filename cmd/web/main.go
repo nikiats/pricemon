@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -11,6 +13,9 @@ import (
 	"pricemon/internal/web/handler"
 	"pricemon/internal/web/repository"
 	"pricemon/internal/web/service"
+
+	"pricemon/internal/migration"
+	"pricemon/internal/web/repository/migrations"
 )
 
 func main() {
@@ -27,6 +32,16 @@ func main() {
 	defer pool.Close()
 	if err := pool.Ping(ctx); err != nil {
 		log.Fatal(err)
+	}
+
+	var migrateOnStart bool
+	if migrateOnStart, err = strconv.ParseBool(cfg.DB.MigrateOnStart); err != nil {
+		log.Fatal(fmt.Errorf("could not parse DATABASE_MIGRATE: %w", err))
+	}
+	if migrateOnStart {
+		if err = migration.Migrate(pool, migrations.MigrationsFS); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	svc := service.New(

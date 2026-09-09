@@ -1,0 +1,73 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: internal/web/Dockerfile
+    container_name: pricemon_web
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - PORT=8080
+      - PRICEMON_URL=http://pricemon:8080
+      - DATABASE_URL=postgres://postgres:postgres@web_db:5432/web_db?sslmode=disable
+    depends_on:
+      - web_db
+      - pricemon
+    restart: unless-stopped
+
+  pricemon:
+    build:
+      context: .
+      dockerfile: internal/pricemon/Dockerfile
+    container_name: pricemon_pricemon
+    env_file:
+      - .env
+    environment:
+      - PORT=8080
+      - DATABASE_URL=postgres://postgres:postgres@pricemon_db:5432/pricemon_db?sslmode=disable
+      - SERVICE_TOKEN=example-97a9e81c9d4b0eb7891c803f8be30d52d1348b91440ebfcba37f5fb8a056b7e4
+    depends_on:
+      - pricemon_db
+    restart: unless-stopped
+
+  web_db:
+    image: postgres:16-alpine
+    container_name: pricemon_web_db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=web_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - web_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d web_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  pricemon_db:
+    image: postgres:16-alpine
+    container_name: pricemon_pricemon_db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=pricemon_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - pricemon_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pricemon_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  web_data:
+  pricemon_data:
