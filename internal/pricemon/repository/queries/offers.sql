@@ -11,14 +11,11 @@ ON CONFLICT (platform_id, item_id, side)
 DO UPDATE SET price = EXCLUDED.price, updated_at = now()
 RETURNING (xmax = 0)::boolean AS created;
 
--- name: DeleteOffer :many
+-- name: DeleteOffer :execrows
 DELETE FROM offers
-USING items
-WHERE offers.item_id = items.id
-  AND offers.platform_id = $1
-  AND items.name = $2
-  AND offers.side = $3
-RETURNING offers.item_id;
+WHERE platform_id = $1
+  AND item_id = $2
+  AND side = $3;
 
 -- name: LockItem :exec
 SELECT id FROM items

@@ -54,7 +54,7 @@ func classify(err error) error {
 	case errors.As(err, &pgErr) && pgErr.Code == pgerrcode.ForeignKeyViolation:
 		return ErrNoRelation
 	default:
-		return nil
+		return fmt.Errorf("repository error: %w", err)
 	}
 }
 

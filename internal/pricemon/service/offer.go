@@ -10,64 +10,60 @@ import (
 )
 
 func (s *Service) ApplyOfferChanges(ctx context.Context, platformID int64, changes model.OfferChanges) (model.OfferBatchResult, error) {
-	prepared, err := prepareChanges(changes)
+	items, err := groupByItem(changes)
 	if err != nil {
 		return model.OfferBatchResult{}, err
 	}
 
-	result, err := s.repo.ApplyOfferChanges(ctx, platformID, prepared)
-	switch {
-	case errors.Is(err, repository.ErrNoRelation):
-		return model.OfferBatchResult{}, ErrUnknownPlatform
-	case err != nil:
-		return model.OfferBatchResult{}, fmt.Errorf("apply offer changes: %w", err)
+	var total model.OfferBatchResult
+	for name, itemChanges := range items {
+		result, err := s.repo.ApplyItemChanges(ctx, platformID, name, itemChanges)
+		switch {
+		case errors.Is(err, repository.ErrNoRelation):
+			return model.OfferBatchResult{}, ErrUnknownPlatform
+		case err != nil:
+			return model.OfferBatchResult{}, fmt.Errorf("apply item changes: %w", err)
+		}
+
+		total.Created += result.Created
+		total.Replaced += result.Replaced
+		total.Deleted += result.Deleted
 	}
 
-	return result, nil
+	return total, nil
 }
 
-func prepareChanges(changes model.OfferChanges) (model.OfferChanges, error) {
-	prepared := model.OfferChanges{
-		Set:    make([]model.Offer, 0, len(changes.Set)),
-		Delete: make([]model.OfferKey, 0, len(changes.Delete)),
-	}
-	seen := make(map[model.OfferKey]struct{}, len(changes.Set)+len(changes.Delete))
+func groupByItem(changes model.OfferChanges) (map[string][]model.OfferChange, error) {
+	items := make(map[string][]model.OfferChange)
 
 	for _, offer := range changes.Set {
-		key, err := prepareKey(offer.OfferKey, seen)
-		if err != nil {
-			return model.OfferChanges{}, err
+		change := model.OfferChange{Side: offer.Side, Price: offer.Price}
+		if err := addChange(items, offer.ItemName, change); err != nil {
+			return nil, err
 		}
-		if offer.Price < 0 {
-			return model.OfferChanges{}, ErrInvalidOffer
-		}
-
-		prepared.Set = append(prepared.Set, model.Offer{OfferKey: key, Price: offer.Price})
 	}
-
 	for _, key := range changes.Delete {
-		key, err := prepareKey(key, seen)
-		if err != nil {
-			return model.OfferChanges{}, err
+		change := model.OfferChange{Side: key.Side, Delete: true}
+		if err := addChange(items, key.ItemName, change); err != nil {
+			return nil, err
 		}
-
-		prepared.Delete = append(prepared.Delete, key)
 	}
 
-	return prepared, nil
+	return items, nil
 }
 
-func prepareKey(key model.OfferKey, seen map[model.OfferKey]struct{}) (model.OfferKey, error) {
-	name, err := normalizeName(key.ItemName)
-	if err != nil || !key.Side.Valid() {
-		return model.OfferKey{}, ErrInvalidOffer
+func addChange(items map[string][]model.OfferChange, name string, change model.OfferChange) error {
+	name, err := normalizeName(name)
+	if err != nil || !change.Side.Valid() || change.Price < 0 {
+		return ErrInvalidOffer
 	}
 
-	key.ItemName = name
-	if _, duplicate := seen[key]; duplicate {
-		return model.OfferKey{}, ErrDuplicateOffer
+	for _, existing := range items[name] {
+		if existing.Side == change.Side {
+			return ErrDuplicateOffer
+		}
 	}
-	seen[key] = struct{}{}
 
-	return key, nil
+	items[name] = append(items[name], change)
+	return nil
 }

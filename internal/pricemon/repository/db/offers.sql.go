@@ -19,40 +19,25 @@ func (q *Queries) DeleteBestDeal(ctx context.Context, itemID int64) error {
 	return err
 }
 
-const deleteOffer = `-- name: DeleteOffer :many
+const deleteOffer = `-- name: DeleteOffer :execrows
 DELETE FROM offers
-USING items
-WHERE offers.item_id = items.id
-  AND offers.platform_id = $1
-  AND items.name = $2
-  AND offers.side = $3
-RETURNING offers.item_id
+WHERE platform_id = $1
+  AND item_id = $2
+  AND side = $3
 `
 
 type DeleteOfferParams struct {
 	PlatformID int64
-	Name       string
+	ItemID     int64
 	Side       OfferSide
 }
 
-func (q *Queries) DeleteOffer(ctx context.Context, arg DeleteOfferParams) ([]int64, error) {
-	rows, err := q.db.Query(ctx, deleteOffer, arg.PlatformID, arg.Name, arg.Side)
+func (q *Queries) DeleteOffer(ctx context.Context, arg DeleteOfferParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteOffer, arg.PlatformID, arg.ItemID, arg.Side)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-	defer rows.Close()
-	var items []int64
-	for rows.Next() {
-		var item_id int64
-		if err := rows.Scan(&item_id); err != nil {
-			return nil, err
-		}
-		items = append(items, item_id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+	return result.RowsAffected(), nil
 }
 
 const listOffersOfItem = `-- name: ListOffersOfItem :many

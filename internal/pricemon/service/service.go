@@ -28,7 +28,7 @@ type pricemonRepository interface {
 	SetCollectorAPIKey(ctx context.Context, id string, keyHash []byte) (model.Collector, error)
 	GetCollectorByAPIKeyHash(ctx context.Context, keyHash []byte) (model.Collector, error)
 
-	ApplyOfferChanges(ctx context.Context, platformID int64, changes model.OfferChanges) (model.OfferBatchResult, error)
+	ApplyItemChanges(ctx context.Context, platformID int64, itemName string, changes []model.OfferChange) (model.OfferBatchResult, error)
 	ListDeals(ctx context.Context) ([]model.Deal, error)
 }
 
